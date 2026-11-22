@@ -89,18 +89,18 @@ fi
 
 # Check which DNS server answered — backup vs primary
 if echo "$DNS_SERVER_LINE" | grep -q "$BACKUP_DNS_IP"; then
-    echo "  $INFO  NOTE: Answered by BACKUP DNS ($BACKUP_DNS_IP / Mac 4). Primary may be down."
+    echo -e "  $INFO  NOTE: Answered by BACKUP DNS ($BACKUP_DNS_IP / Mac 4). Primary may be down."
 elif echo "$DNS_SERVER_LINE" | grep -q "$MAC1_IP"; then
-    echo "  $INFO  Answered by PRIMARY DNS ($MAC1_IP / Mac 1) — normal."
+    echo -e "  $INFO  Answered by PRIMARY DNS ($MAC1_IP / Mac 1) — normal."
 fi
 
 # Cache staleness check
-echo "  $INFO  Cache flush check: direct query to Mac 1..."
+echo -e "  $INFO  Cache flush check: direct query to Mac 1..."
 DIRECT_ANSWER=$(dig +short +timeout=3 @"$MAC1_IP" "$TARGET" 2>/dev/null || echo "TIMEOUT")
 if [ "$DIRECT_ANSWER" = "TIMEOUT" ] || [ -z "$DIRECT_ANSWER" ]; then
-    echo "  $INFO  Mac 1 DNS not reachable directly (may be relying on backup)"
+    echo -e "  $INFO  Mac 1 DNS not reachable directly (may be relying on backup)"
 else
-    echo "  $INFO  Mac 1 direct answer: $DIRECT_ANSWER"
+    echo -e "  $INFO  Mac 1 direct answer: $DIRECT_ANSWER"
 fi
 
 # ── LAYER 2: IP (Ping) ───────────────────────────────────────
