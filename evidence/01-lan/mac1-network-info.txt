@@ -1,0 +1,35 @@
+============================================
+ Network Info for Mac 1 (DNS Server)
+ Collected: 2026-11-22 19:22 IST
+============================================
+
+--- Wi-Fi Network ---
+SSID: OnePlus 11R 5G  (phone hotspot — shared LAN for all 4 Macs)
+Security: WPA3 Personal
+Channel: 1 (2.4 GHz, 20 MHz)
+BSSID: 22:62:04:28:42:69
+
+--- IPv4 Address ---
+10.202.54.224
+
+--- Subnet ---
+10.202.54.x (router at 10.202.54.86, likely /24 — 254 hosts)
+
+--- Default Gateway ---
+10.202.54.86
+
+--- Interface ---
+en0 (Wi-Fi)
+
+--- MAC Addresses ---
+80:a9:97:44:06:d3   (real Wi-Fi hardware MAC from networksetup)
+6e:a4:d1:e3:8c:a0   (randomised/private MAC shown per-network — 
+                      macOS rotates this for privacy)
+
+--- Radio Details ---
+PHY Mode: 802.11n
+Tx Rate: 144 Mbps
+RSSI: -35 dBm  (excellent signal)
+Noise: 0 dBm
+MCS Index: 15
+NSS: 2 (2 spatial streams)
