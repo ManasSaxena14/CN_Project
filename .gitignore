@@ -1,0 +1,4 @@
+# never commit private keys or cert bundles
+*.key
+*.tgz
+__pycache__/
