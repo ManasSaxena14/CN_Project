@@ -56,12 +56,16 @@ echo "cacert = \"$HOME/cn-ca-bundle.pem\"" >> /tmp/curlrc.tmp
 cp /tmp/curlrc.tmp "$HOME/.curlrc"
 echo "      ✓ ~/.curlrc updated: cacert = $HOME/cn-ca-bundle.pem"
 
-# ── 4. Point DNS to Mac 1 ────────────────────────────────────
+# ── 4. Point DNS to Mac 1 (and Backup DNS if configured) ───
 echo ""
-echo "[4/4] Setting DNS to Mac 1 ($MAC1_IP) on Wi-Fi ..."
-INTERFACE=$(networksetup -listallhardwareports | awk '/Wi-Fi/{getline; print $2}')
-sudo networksetup -setdnsservers "$INTERFACE" "$MAC1_IP"
-echo "      ✓ DNS set to $MAC1_IP on $INTERFACE"
+SERVICE=$(networksetup -listallnetworkservices 2>/dev/null | grep -Ei "^(Wi-Fi|AirPort)$" | head -1 || echo "Wi-Fi")
+echo "[4/4] Setting DNS on '$SERVICE' to Mac 1 ($MAC1_IP)${BACKUP_DNS_IP:+ and Mac 4 ($BACKUP_DNS_IP)}..."
+if [ -n "${BACKUP_DNS_IP:-}" ]; then
+    sudo networksetup -setdnsservers "$SERVICE" "$MAC1_IP" "$BACKUP_DNS_IP"
+else
+    sudo networksetup -setdnsservers "$SERVICE" "$MAC1_IP"
+fi
+echo "      ✓ DNS set on $SERVICE"
 
 # Flush DNS cache
 sudo dscacheutil -flushcache

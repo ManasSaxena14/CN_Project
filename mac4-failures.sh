@@ -32,9 +32,9 @@ echo "=========================================="
 
 # ── DEMO 1: Wrong DNS server ─────────────────────────────────
 pause "DEMO 1: Wrong DNS server – point DNS at 8.8.8.8 (Google), NOT Mac 1"
-echo "Setting DNS to 8.8.8.8 temporarily..."
-INTERFACE=$(networksetup -listallhardwareports | awk '/Wi-Fi/{getline; print $2}')
-sudo networksetup -setdnsservers "$INTERFACE" 8.8.8.8
+SERVICE=$(networksetup -listallnetworkservices 2>/dev/null | grep -Ei "^(Wi-Fi|AirPort)$" | head -1 || echo "Wi-Fi")
+echo "Setting DNS to 8.8.8.8 temporarily on $SERVICE..."
+sudo networksetup -setdnsservers "$SERVICE" 8.8.8.8
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder 2>/dev/null || true
 
@@ -46,15 +46,15 @@ curl -sv "https://$DOMAIN/api/status" 2>&1 | tee -a "$OUT/01-wrong-dns-server.tx
 echo "✓ Demo 1 saved to $OUT/01-wrong-dns-server.txt"
 
 # Restore DNS to Mac 1
-sudo networksetup -setdnsservers "$INTERFACE" "$MAC1_IP"
+sudo networksetup -setdnsservers "$SERVICE" "$MAC1_IP"
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder 2>/dev/null || true
 echo "  DNS restored to $MAC1_IP"
 
 # ── DEMO 2: Wrong DNS IP (typo in MAC1_IP) ──────────────────
 pause "DEMO 2: Wrong DNS IP – point DNS at a non-existent IP"
-echo "Setting DNS to 10.202.54.99 (non-existent)..."
-sudo networksetup -setdnsservers "$INTERFACE" 10.202.54.99
+echo "Setting DNS to 10.202.54.99 (non-existent) on $SERVICE..."
+sudo networksetup -setdnsservers "$SERVICE" 10.202.54.99
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder 2>/dev/null || true
 
@@ -64,7 +64,7 @@ curl -sv --connect-timeout 5 "https://$DOMAIN/api/status" 2>&1 | tee -a "$OUT/02
 echo "✓ Demo 2 saved to $OUT/02-wrong-dns-ip.txt"
 
 # Restore DNS
-sudo networksetup -setdnsservers "$INTERFACE" "$MAC1_IP"
+sudo networksetup -setdnsservers "$SERVICE" "$MAC1_IP"
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder 2>/dev/null || true
 echo "  DNS restored to $MAC1_IP"
