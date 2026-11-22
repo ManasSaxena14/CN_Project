@@ -22,11 +22,16 @@ case "$ACTION" in
     # ── 1. Install dnsmasq if not present ───────────────────
     if ! command -v dnsmasq &>/dev/null; then
         echo "[1/3] dnsmasq not found. Installing via Homebrew..."
-        if ! command -v brew &>/dev/null; then
+        if ! command -v brew &>/dev/null && [ ! -x "/opt/homebrew/bin/brew" ] && [ ! -x "/usr/local/bin/brew" ]; then
             echo "ERROR: Homebrew not installed. Install from https://brew.sh first."
             exit 1
         fi
-        brew install dnsmasq
+        BREW_BIN=$(command -v brew || echo "/opt/homebrew/bin/brew")
+        if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+            sudo -u "$SUDO_USER" "$BREW_BIN" install dnsmasq
+        else
+            "$BREW_BIN" install dnsmasq
+        fi
         echo "      ✓ dnsmasq installed"
     else
         echo "[1/3] dnsmasq already installed: $(dnsmasq --version 2>&1 | head -1)"

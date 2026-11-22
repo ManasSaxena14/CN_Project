@@ -1,7 +1,7 @@
 # DEMO SCRIPT — Computer Networks Phase 1 & 2
 ## 11 Steps | Exact Commands | Presenter per Step
 
-> **IPs:** Mac 1 (DNS) `10.202.54.224` · Mac 2 (nginx/edge) `10.81.95.225` · Mac 3 (Backend A + Standby Edge) `10.81.95.70` · Mac 4 (Backend B + Backup DNS + Test Client) `10.81.95.68`  
+> **IPs:** Mac 1 (DNS) `10.202.54.224` · Mac 2 (nginx/edge) `10.202.54.225` · Mac 3 (Backend A + Standby Edge) `10.202.54.70` · Mac 4 (Backend B + Backup DNS + Test Client) `10.202.54.68`  
 > **Domain:** `app.team1.test` · **CA:** `team1-ca.crt`
 
 ---
@@ -16,9 +16,9 @@
 ipconfig getifaddr en0
 
 # Mac 1 pings all others
-ping -c 3 10.81.95.225   # Mac 2
-ping -c 3 10.81.95.70    # Mac 3
-ping -c 3 10.81.95.68    # Mac 4
+ping -c 3 10.202.54.225   # Mac 2
+ping -c 3 10.202.54.70    # Mac 3
+ping -c 3 10.202.54.68    # Mac 4
 ```
 
 **Evidence:** `evidence/01-lan/`
@@ -33,7 +33,7 @@ ping -c 3 10.81.95.68    # Mac 4
 ps aux | grep dnsmasq
 
 # Mac 4 — query private DNS
-dig app.team1.test         # expect answer: 10.81.95.225
+dig app.team1.test         # expect answer: 10.202.54.225
 dig +short app.team1.test
 ```
 
@@ -83,8 +83,8 @@ ETAG=$(curl -sI https://app.team1.test/api/cache | grep -i "^etag:" | awk '{prin
 curl -sI -H "If-None-Match: $ETAG" https://app.team1.test/api/cache | grep "HTTP/"
 
 # 4. ETags identical on both backends
-curl -sI http://10.81.95.70:3001/api/cache | grep -i etag
-curl -sI http://10.81.95.68:3002/api/cache | grep -i etag
+curl -sI http://10.202.54.70:3001/api/cache | grep -i etag
+curl -sI http://10.202.54.68:3002/api/cache | grep -i etag
 ```
 
 **Evidence:** `evidence/06-caching/`
@@ -110,7 +110,7 @@ dig app.team1.test         # ;; SERVER: 10.202.54.224
 # Mac 4 — flush cache, re-query
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder
-dig app.team1.test         # ;; SERVER: 10.81.95.68  ← Mac 4 backup!
+dig app.team1.test         # ;; SERVER: 10.202.54.68  ← Mac 4 backup!
 
 # App still works despite DNS primary failure
 curl https://app.team1.test/api/status
@@ -128,7 +128,7 @@ curl https://app.team1.test/api/status
 ```bash
 # Show TTL in DNS answer
 dig app.team1.test | grep -A 3 "ANSWER SECTION"
-# → 30   IN   A   10.81.95.225  (TTL=30s)
+# → 30   IN   A   10.202.54.225  (TTL=30s)
 
 # Wait 30 s, flush, query again — no stale data
 sleep 30 && sudo dscacheutil -flushcache && dig +short app.team1.test
@@ -149,9 +149,9 @@ sudo ./mac4-ext-c-firewall.sh apply
 sudo pfctl -a team1-backend -sr
 
 # From an unauthorised host — connection is DROPPED (timeout)
-nc -vz 10.81.95.68 3002        # from non-edge: timeout
+nc -vz 10.202.54.68 3002        # from non-edge: timeout
 # From Mac 2 (authorised edge): succeeds
-# curl http://10.81.95.68:3002/api/status  → 200
+# curl http://10.202.54.68:3002/api/status  → 200
 
 # App still works through nginx (Mac 2 is allowed)
 curl https://app.team1.test/api/status
@@ -176,7 +176,7 @@ sudo ./mac3-standby-edge.sh start
 
 # Mac 4 — wait ≤30 s (TTL), flush, re-query
 sudo dscacheutil -flushcache
-dig app.team1.test         # answer: 10.81.95.70  (Mac 3!)
+dig app.team1.test         # answer: 10.202.54.70  (Mac 3!)
 
 # App still works through standby edge
 curl https://app.team1.test/api/status    # X-Backend: A or B

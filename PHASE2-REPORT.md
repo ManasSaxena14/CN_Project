@@ -30,8 +30,8 @@
 - Configured client DNS with **both servers** (Mac 1 first, Mac 4 second) using `dns/set-client-dns.sh set`.
 
 **Failover demo result:**
-- Mac 1 stopped dnsmasq → client flushed cache → `dig app.team1.test` returned `10.81.95.225` answered by **Mac 4** (`10.81.95.68`).
-- Verified with: `dig app.team1.test` → `;; SERVER: 10.81.95.68#53`.
+- Mac 1 stopped dnsmasq → client flushed cache → `dig app.team1.test` returned `10.202.54.225` answered by **Mac 4** (`10.202.54.68`).
+- Verified with: `dig app.team1.test` → `;; SERVER: 10.202.54.68#53`.
 
 **Evidence:** `evidence/08-backup-dns/`
 
@@ -61,7 +61,7 @@
 **What was done:**
 - Applied `firewall/backend-firewall.sh` (Mac 3's script) on Mac 4 for port 3002.
 - Used `mac4-ext-c-firewall.sh apply` → delegates without editing the shared script.
-- Verified: Mac 2 (`10.81.95.225`) can reach `:3002`; any other host gets silent DROP.
+- Verified: Mac 2 (`10.202.54.225`) can reach `:3002`; any other host gets silent DROP.
 - Removed firewall after demo: `sudo ./mac4-ext-c-firewall.sh remove`.
 
 **pf anchor used:** `team1-backend`  
