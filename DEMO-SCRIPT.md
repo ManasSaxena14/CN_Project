@@ -1,67 +1,63 @@
-# DEMO SCRIPT – Computer Networks Phase 1
-## 8 Steps | Exact Commands | Who Presents
+# DEMO SCRIPT — Computer Networks Phase 1 & 2
+## 11 Steps | Exact Commands | Presenter per Step
 
-> **IPs from config.env**  
-> Mac 1 (DNS) `10.202.54.224` · Mac 2 (nginx) `10.81.95.225` · Mac 3 (Backend A) `10.81.95.70` · Mac 4 (Backend B / Test Client) `10.81.95.68`
+> **IPs:** Mac 1 (DNS) `10.202.54.224` · Mac 2 (nginx/edge) `10.81.95.225` · Mac 3 (Backend A + Standby Edge) `10.81.95.70` · Mac 4 (Backend B + Backup DNS + Test Client) `10.81.95.68`  
+> **Domain:** `app.team1.test` · **CA:** `team1-ca.crt`
 
 ---
 
-## Step 1 – LAN: Show all 4 Macs are on the same subnet
+## Phase 1 Steps (1–5, recap)
+
+### Step 1 — LAN: All 4 Macs on the same subnet
 **Presenter: Mac 1**
 
 ```bash
-# On each Mac – show your IP
+# Each Mac shows their IP
 ipconfig getifaddr en0
 
-# Ping each other from Mac 1
+# Mac 1 pings all others
 ping -c 3 10.81.95.225   # Mac 2
 ping -c 3 10.81.95.70    # Mac 3
 ping -c 3 10.81.95.68    # Mac 4
 ```
 
-**What to show:** All in the same `/24` subnet. `evidence/01-lan/` screenshots.
+**Evidence:** `evidence/01-lan/`
 
 ---
 
-## Step 2 – DNS: Private DNS resolves app.team1.test → Mac 2's IP
-**Presenter: Mac 1 (runs DNS) + Mac 4 (client query)**
+### Step 2 — DNS: Private name resolution
+**Presenter: Mac 1 (runs DNS) + Mac 4 (client)**
 
 ```bash
-# Mac 1 – show the DNS server is running
-ps aux | grep dns
+# Mac 1 — show dnsmasq running
+ps aux | grep dnsmasq
 
-# Mac 4 – query the private DNS
-dig @10.202.54.224 app.team1.test
-# Expected answer: 10.81.95.225  (MAC2_IP)
-
-# also via system DNS (should work after client setup)
-dig app.team1.test
+# Mac 4 — query private DNS
+dig app.team1.test         # expect answer: 10.81.95.225
+dig +short app.team1.test
 ```
 
-**What to show:** Answer section = `10.81.95.225`. `evidence/02-dns/`.
+**Evidence:** `evidence/02-dns/`
 
 ---
 
-## Step 3 – HTTPS: nginx terminates TLS, responds 200
-**Presenter: Mac 2 (nginx) + Mac 4 (client)**
+### Step 3 — HTTPS: TLS termination at nginx
+**Presenter: Mac 2 + Mac 4**
 
 ```bash
-# Mac 4 – test HTTPS by domain name (not IP, not -k)
+# Mac 4 — proper validation, NOT -k
 curl -v https://app.team1.test/api/status
-
-# Show certificate details
-curl -v --tlsv1.2 --tls-max 1.2 https://app.team1.test/api/status 2>&1 | grep -E "subject|issuer|SSL"
+curl -v --tlsv1.2 --tls-max 1.2 https://app.team1.test/api/status 2>&1 | grep -E "subject|issuer|SSL connection"
 ```
 
-**What to show:** `HTTP/2 200`, `X-Backend: A` or `B`, certificate CN=app.team1.test. `evidence/03-https/`.
+**Evidence:** `evidence/03-https/`
 
 ---
 
-## Step 4 – Load Balancing: Requests alternate A ↔ B
-**Presenter: Mac 4 (runs the loop)**
+### Step 4 — Load Balancing: A ↔ B alternating
+**Presenter: Mac 4**
 
 ```bash
-# Mac 4
 for i in {1..10}; do
     echo -n "Request $i: "
     curl -s -D - -o /dev/null https://app.team1.test/api/status \
@@ -69,103 +65,183 @@ for i in {1..10}; do
 done
 ```
 
-**What to show:** `X-Backend: A` and `X-Backend: B` alternating. `evidence/04-load-balancing/`.
+**Evidence:** `evidence/04-load-balancing/`
 
 ---
 
-## Step 5 – Caching: ETag + 304 Not Modified
+### Step 5 — Caching: ETag + 304 Not Modified
 **Presenter: Mac 4**
 
 ```bash
-# 1. First request → 200 + Cache-Control: max-age=60 + ETag
+# 1. First request → 200 + ETag + Cache-Control: max-age=60
 curl -sI https://app.team1.test/api/cache | grep -Ei "HTTP|cache-control|etag"
 
 # 2. Capture ETag
 ETAG=$(curl -sI https://app.team1.test/api/cache | grep -i "^etag:" | awk '{print $2}' | tr -d '\r')
 
-# 3. Conditional request → 304 Not Modified
+# 3. Conditional GET → 304
 curl -sI -H "If-None-Match: $ETAG" https://app.team1.test/api/cache | grep "HTTP/"
 
-# 4. ETags are identical across both backends
+# 4. ETags identical on both backends
 curl -sI http://10.81.95.70:3001/api/cache | grep -i etag
 curl -sI http://10.81.95.68:3002/api/cache | grep -i etag
 ```
 
-**What to show:** `304 Not Modified`, same ETag on A and B. `evidence/06-caching/`.
+**Evidence:** `evidence/06-caching/`
 
 ---
 
-## Step 6 – Wireshark / tcpdump: Full packet capture
+## Phase 2 Steps (6–11)
+
+### Step 6 — Ext A: Backup DNS Failover
+**Presenter: Mac 1 (stops DNS) + Mac 4 (shows backup takes over)**
+
+```bash
+# Mac 4 — show both DNS servers configured
+networksetup -getdnsservers Wi-Fi
+scutil --dns | grep -A 4 "resolver #"
+
+# Normal state: query answered by Mac 1
+dig app.team1.test         # ;; SERVER: 10.202.54.224
+
+# Mac 1 — STOPS dnsmasq (simulated failure)
+# (Mac 1 runs): sudo pkill dnsmasq
+
+# Mac 4 — flush cache, re-query
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+dig app.team1.test         # ;; SERVER: 10.81.95.68  ← Mac 4 backup!
+
+# App still works despite DNS primary failure
+curl https://app.team1.test/api/status
+```
+
+**Key talking point:** macOS tries servers in order; backup answers when primary times out. TTL=30s means cache doesn't mask the failover.
+
+**Evidence:** `evidence/08-backup-dns/`
+
+---
+
+### Step 7 — Ext B: Short TTL (30 s)
+**Presenter: Mac 1 + Mac 4**
+
+```bash
+# Show TTL in DNS answer
+dig app.team1.test | grep -A 3 "ANSWER SECTION"
+# → 30   IN   A   10.81.95.225  (TTL=30s)
+
+# Wait 30 s, flush, query again — no stale data
+sleep 30 && sudo dscacheutil -flushcache && dig +short app.team1.test
+```
+
+**Evidence:** `evidence/09-ttl/`
+
+---
+
+### Step 8 — Ext C: Service Isolation / Firewall
+**Presenter: Mac 4 (applies firewall on port 3002)**
+
+```bash
+# Apply pf rules on Mac 4
+sudo ./mac4-ext-c-firewall.sh apply
+
+# From Mac 4 itself — show pf anchor
+sudo pfctl -a team1-backend -sr
+
+# From an unauthorised host — connection is DROPPED (timeout)
+nc -vz 10.81.95.68 3002        # from non-edge: timeout
+# From Mac 2 (authorised edge): succeeds
+# curl http://10.81.95.68:3002/api/status  → 200
+
+# App still works through nginx (Mac 2 is allowed)
+curl https://app.team1.test/api/status
+
+# Remove after demo
+sudo ./mac4-ext-c-firewall.sh remove
+```
+
+**Evidence:** `evidence/11-service-isolation/`
+
+---
+
+### Step 9 — Ext E: Standby Edge / Hot Cutover
+**Presenter: Mac 3 (standby nginx) + Mac 1 (DNS switch)**
+
+```bash
+# Mac 3 — start standby nginx
+sudo ./mac3-standby-edge.sh start
+
+# Mac 1 — update APP_TARGET_IP to MAC3_IP, restart DNS
+# (Mac 1 edits config.env, then): sudo ./dns/start-dns.sh
+
+# Mac 4 — wait ≤30 s (TTL), flush, re-query
+sudo dscacheutil -flushcache
+dig app.team1.test         # answer: 10.81.95.70  (Mac 3!)
+
+# App still works through standby edge
+curl https://app.team1.test/api/status    # X-Backend: A or B
+
+# Revert: Mac 1 restores APP_TARGET_IP=MAC2_IP, restarts DNS
+```
+
+**Evidence:** `evidence/10-ha-failover/` + `evidence/12-edge-cutover/`
+
+---
+
+### Step 10 — Ext F: Fault Diagnosis (Faculty Fault Drill)
+**Presenter: Mac 4 (runs diagnose.sh), all Macs**
+
+```bash
+# Faculty / teammate secretly breaks ONE thing.
+# Mac 4 runs the diagnostic:
+./troubleshoot/diagnose.sh
+
+# Script stops at the failing layer, names the cause, prints the fix.
+# After fix is applied:
+./troubleshoot/diagnose.sh   # all 5 layers green
+```
+
+**What to narrate:**
+1. Layer 1 DNS checked first — most faults start here.
+2. If DNS resolves to wrong IP, TLS fails at Layer 4 (SNI mismatch) even if TCP connects.
+3. 502 at Layer 5 → script immediately tests both backends directly.
+
+**Evidence:** `evidence/13-troubleshooting/`
+
+---
+
+### Step 11 — Wireshark / Packet Evidence
 **Presenter: Mac 4**
 
 ```bash
-# Already captured – open evidence/05-wireshark/full-flow.pcap in Wireshark
+# Already captured — open in Wireshark:
+open evidence/05-wireshark/full-flow.pcap
 
-# Wireshark display filters (show one at a time):
-#   dns                              → DNS query + answer (MAC2_IP)
-#   tcp.flags.syn==1                 → 3-way handshake SYN/SYN-ACK to :443
-#   tls.handshake                    → ClientHello(SNI), ServerHello, Certificate, CCS
-#   tls.record.content_type==23      → Encrypted Application Data
+# Demonstrate these filters one by one:
+# dns                              → query to :53, answer=MAC2_IP, answered by which server
+# tcp.flags.syn==1                 → 3-way handshake SYN/SYN-ACK to :443
+# tls.handshake                    → ClientHello(SNI), ServerHello, Certificate, ChangeCipherSpec
+# tls.record.content_type==23      → Encrypted Application Data
 ```
 
-**What to show:** Each screenshot from `evidence/05-wireshark/`. Point out: ephemeral port → 443, SNI=app.team1.test, cert, then encrypted data.
+**Evidence:** `evidence/05-wireshark/` (screenshots + pcap)
 
 ---
 
-## Step 7 – Failure Demos: 5 failure scenarios
-**Presenter: Mac 4 (runs mac4-failures.sh), all Macs cooperate**
+## Quick Evidence Index
 
-| # | Failure | Expected output |
-|---|---------|----------------|
-| 1 | Wrong DNS server (8.8.8.8) | `NXDOMAIN` or no answer for app.team1.test |
-| 2 | Wrong DNS IP (nonexistent) | Timeout / connection refused |
-| 3 | One backend stopped (B) | All requests → `X-Backend: A` only |
-| 4 | Both backends stopped | `502 Bad Gateway` from nginx |
-| 5 | Wrong port (8080) | `Connection refused` |
-
-```bash
-# Mac 4
-./mac4-failures.sh
-# follow interactive prompts – coordinate over chat
-```
-
-**Evidence:** `evidence/07-failures/01-*.txt` through `05-*.txt`.
-
----
-
-## Step 8 – Viva / Q&A: Architecture walkthrough
-**Presenter: All 4 (each explains their machine)**
-
-**Flow to narrate:**
-```
-Browser (Mac 4)
-  → DNS query to Mac 1:53  → answer: Mac 2's IP
-  → TCP SYN to Mac 2:443
-  → TLS handshake (SNI: app.team1.test, cert from Mac 2)
-  → HTTPS GET /api/status
-  → nginx reverse-proxies to backend_pool (round-robin)
-     → Mac 3:3001  or  Mac 4:3002
-  → JSON response with X-Backend header
-  → TLS record (content_type=23, encrypted) back to Mac 4
-```
-
-**Key questions to be ready for:**
-- What is an ephemeral port? (random high port chosen by OS for this connection)
-- 3-way handshake: SYN → SYN-ACK → ACK
-- Why is HTTP traffic encrypted in tcpdump? (TLS wraps HTTP payload; only headers visible in TLS 1.2 handshake phase)
-- What does ARP do? (resolves IP → MAC on the LAN before the first packet)
-- TCP reliability: seq/ack numbers, retransmission on timeout, flow-control via window size
-
----
-
-## Quick Evidence Index (find anything in < 30 s)
-
-| Folder | Contents |
-|--------|---------|
-| `evidence/01-lan/` | ifconfig output, ping screenshots |
-| `evidence/02-dns/` | dig output, DNS query proof |
-| `evidence/03-https/` | curl -v output, cert details |
-| `evidence/04-load-balancing/` | X-Backend alternating log |
-| `evidence/05-wireshark/` | full-flow.pcap + screenshots (dns, syn, tls, app-data) |
-| `evidence/06-caching/` | ETag + 304 responses |
-| `evidence/07-failures/` | 01-05 failure text files |
+| Folder | Demo Step | Contents |
+|--------|-----------|---------|
+| `evidence/01-lan/` | Step 1 | ifconfig, ping matrix |
+| `evidence/02-dns/` | Step 2 | dig output, failure demos |
+| `evidence/03-https/` | Step 3 | curl -v, cert details |
+| `evidence/04-load-balancing/` | Step 4 | X-Backend alternating log |
+| `evidence/05-wireshark/` | Step 11 | full-flow.pcap + screenshots |
+| `evidence/06-caching/` | Step 5 | ETag + 304 responses |
+| `evidence/07-failures/` | Phase 1 | 5 failure demo text files |
+| `evidence/08-backup-dns/` | Step 6 | Failover dig SERVER= proof |
+| `evidence/09-ttl/` | Step 7 | TTL=30s, cache expiry |
+| `evidence/10-ha-failover/` | Step 9 | Edge cutover dig + curl |
+| `evidence/11-service-isolation/` | Step 8 | pf rules, block/allow proofs |
+| `evidence/12-edge-cutover/` | Step 9 | DNS switch timing |
+| `evidence/13-troubleshooting/` | Step 10 | diagnose.sh run, drill output |
