@@ -1,0 +1,99 @@
+TEAM 1 - mac4 test run   Mon Nov 23 12:20:33 IST 2026
+domain team1.test | Mac1 10.128.139.224 | Mac2 10.128.139.225 | Mac3 10.128.139.70 | Mac4 10.128.139.68 | target 10.128.139.225
+
+== Role check ==
+  PASS  this Mac's IP 10.128.139.68 matches config.env
+
+== Task A - private LAN ==
+        interface en0 | IPv4 10.128.139.68 | mask 255.255.255.0 | gateway 10.128.139.6 | MAC 22:dc:38:f6:77:a1
+  PASS  has a private IPv4 address on en0
+  PASS  ping Mac 1 (10.128.139.224)
+  PASS  ping Mac 2 (10.128.139.225)
+  PASS  ping Mac 3 (10.128.139.70)
+
+== Task C/F - Backend B on port 3002 ==
+  PASS  Backend B is listening on 3002
+  PASS  bound to all interfaces (0.0.0.0), reachable on the LAN
+  PASS  GET / -> 200
+  PASS  GET /api/status -> {"backend": "B", "status": "ok"}
+  PASS  header X-Backend: B
+  PASS  /api/status is Cache-Control: no-store (LB stays visible)
+  PASS  HEAD /api/cache works (curl -I)
+  PASS  /api/cache has Cache-Control max-age
+  PASS  /api/cache has ETag "512fd8b298df37e4331f2f50b04a880a"
+  PASS  conditional request (If-None-Match) -> 304 Not Modified
+
+== Ext A - backup DNS server on this Mac ==
+  PASS  backup DNS process is running
+  PASS  backup DNS answers app.team1.test -> 10.128.139.225
+
+== Task B - DNS from this client ==
+        DNS servers on Wi-Fi: 10.128.139.224 10.128.139.68 
+  PASS  client uses Mac 1 (10.128.139.224) as DNS
+  PASS  backup DNS (10.128.139.68) also listed (Ext A)
+  FAIL  dig app.team1.test -> '10.128.139.55' (expected 10.128.139.225)
+        fix: is dnsmasq running on Mac 1 / Mac 4?
+  FAIL  dig api.team1.test wrong
+  PASS  unknown name in team1.test -> NXDOMAIN
+  PASS  internet names still resolve (google.com forwarded)
+  FAIL  macOS resolver gives '10.128.139.55'
+        fix: sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+
+== Ext A/B - both DNS servers ==
+  FAIL  primary DNS Mac 1 answers '10.128.139.55'
+        fix: Mac 1: sudo ./dns/start-dns.sh
+  PASS  backup DNS Mac 4 answers 10.128.139.225 (same record -> failover works)
+  PASS  TTL is 30s on both servers (Ext B)
+
+== Task E - HTTPS by name, certificate validated (no -k) ==
+  FAIL  HTTPS request failed (curl exit 7)
+        fix: ./troubleshoot/diagnose.sh
+  FAIL  https://api.team1.test fails
+  WARN  HTTP/2 not negotiated
+  FAIL  HTTP/1.1 fails
+  WARN  forced TLS 1.2 failed
+  WARN  no X-Edge header
+        Mac 2: git pull && ./nginx-script.sh start
+
+== Task D - load balancing through the edge ==
+        X-Backend sequence: - - - - - - - -
+  FAIL  only A=0 B=0 answered
+        fix: is the other backend running?
+
+== Task F - HTTP caching through the edge ==
+  FAIL  no Cache-Control on /api/cache
+  FAIL  only 0/4 conditional requests returned 304
+        fix: ETag must be identical on both backends
+  WARN  /api/status is cacheable
+
+== Section 6.3 - failure behaviour (simulated, nothing is stopped) ==
+  PASS  wrong DNS server (8.8.8.8): name fails, but ping to the edge IP works
+  PASS  DNS pointing to wrong IP (10.128.139.224): connection refused (DNS is only a directory)
+  PASS  wrong port 8443: host up, TCP refused (port = service)
+        one-backend-down and both-down (502) are tested on Mac 2 with a private test edge
+
+== Ext C - backends not reachable directly from a client ==
+  PASS  direct access to Mac 3:3001 blocked (only the edges may connect)
+
+== Ext E - standby edge on Mac 3 ==
+  PASS  standby edge answers with valid cert (X-Edge: mac3-standby)
+
+== Task G - packet capture evidence ==
+  PASS  capture file present: evidence/05-wireshark/full-flow.pcap (290731 bytes)
+  PASS  capture contains the DNS query
+  PASS  capture contains the TCP handshake to 443
+
+================ SUMMARY ================
+  31 passed   10 failed   4 warnings
+  Failed:
+   - dig app.team1.test -> '10.128.139.55' (expected 10.128.139.225)
+   - dig api.team1.test wrong
+   - macOS resolver gives '10.128.139.55'
+   - primary DNS Mac 1 answers '10.128.139.55'
+   - HTTPS request failed (curl exit 7)
+   - https://api.team1.test fails
+   - HTTP/1.1 fails
+   - only A=0 B=0 answered
+   - no Cache-Control on /api/cache
+   - only 0/4 conditional requests returned 304
+  (saved to evidence/test-results/mac4-20261123-122033.txt)

@@ -1,0 +1,37 @@
+===== Ext D: HA failover  (Mon Nov 23 12:08:58 IST 2026)  URL: https://app.team1.test =====
+
+1) Both backends healthy - round-robin
+  12:08:58  200  X-Backend: A  X-Edge: mac2-primary  0.199s
+  12:08:58  200  X-Backend: B  X-Edge: mac2-primary  0.216s
+  12:08:58  200  X-Backend: A  X-Edge: mac2-primary  0.206s
+  12:08:59  200  X-Backend: B  X-Edge: mac2-primary  0.101s
+  12:08:59  200  X-Backend: A  X-Edge: mac2-primary  0.147s
+  12:08:59  200  X-Backend: B  X-Edge: mac2-primary  0.103s
+  -> 6/6 succeeded   A=3  B=3
+
+>> Mac 3: press Ctrl+C on Backend A now [Enter] 2) Backend A DOWN - nginx gets 'connection refused', retries the same request on B
+   (proxy_next_upstream) and marks A down for 10 s (max_fails=1 fail_timeout=10s)
+  12:09:26  200  X-Backend: B  X-Edge: mac2-primary  1.219s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.063s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.111s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.069s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.064s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.065s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.077s
+  12:09:28  200  X-Backend: B  X-Edge: mac2-primary  0.061s
+  -> 8/8 succeeded   A=0  B=8
+
+>> Mac 3: restart Backend A  (BACKEND_NAME=A BACKEND_PORT=3001 python3 backend.py) [Enter] 3) Waiting 11 s for A's fail_timeout to expire...
+   Backend A back - nginx retries it, it answers, load balancing resumes
+  12:09:52  200  X-Backend: B  X-Edge: mac2-primary  0.114s
+  12:09:52  200  X-Backend: B  X-Edge: mac2-primary  0.102s
+  12:09:52  200  X-Backend: A  X-Edge: mac2-primary  0.419s
+  12:09:53  200  X-Backend: B  X-Edge: mac2-primary  0.111s
+  12:09:53  200  X-Backend: A  X-Edge: mac2-primary  0.107s
+  12:09:53  200  X-Backend: B  X-Edge: mac2-primary  0.105s
+  -> 6/6 succeeded   A=2  B=4
+
+RESULT: the client saw no errors while a backend died; recovery needed no config change.
+STILL A SINGLE POINT OF FAILURE: the edge itself (Mac 2). See MAC2-PHASE2.md.
+
+(saved to evidence/10-ha-failover/ha-failover-120858.txt)
