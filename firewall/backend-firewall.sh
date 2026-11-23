@@ -15,7 +15,7 @@
 #   • lo0 (loopback) is explicitly skipped so the process itself can still
 #     connect to 127.0.0.1:<port> for health-checks.
 #   • No other traffic is touched — we write to a named pf anchor
-#     (team1-backend), not over /etc/pf.conf.
+#     (com.apple/team1-backend), not over /etc/pf.conf.
 #
 # HOW TO FIND YOUR BACKEND PORT
 #   Auto-detected: compare this Mac's LAN IP against MAC3_IP / MAC4_IP
@@ -38,6 +38,9 @@ source "$SCRIPT_DIR/config.env"
 ANCHOR_NAME="team1-backend"
 ANCHOR_FILE="/etc/pf.anchors/${ANCHOR_NAME}"
 BACKUP_FILE="/etc/pf.anchors/${ANCHOR_NAME}.bak"
+# macOS /etc/pf.conf only evaluates anchors under "com.apple/*". A top-level
+# anchor would load fine but NEVER be evaluated, so we load ours inside it.
+PF_ANCHOR="com.apple/${ANCHOR_NAME}"
 
 # Detect which backend port belongs to this Mac
 detect_backend_port() {
@@ -91,15 +94,15 @@ write_anchor_rules() {
 pass quick on lo0
 
 # Allow the primary edge (Mac 2) to reach the backend port
-pass in quick on any proto tcp \
+pass in quick proto tcp \
     from $MAC2_IP to any port $BACKEND_PORT
 
 # Allow the standby edge (Mac 3 / STANDBY_EDGE_IP) to reach the backend port
-pass in quick on any proto tcp \
+pass in quick proto tcp \
     from $STANDBY_EDGE_IP to any port $BACKEND_PORT
 
 # Block everyone else on the backend port (drop = silent, no RST)
-block drop in quick on any proto tcp to any port $BACKEND_PORT
+block drop in quick proto tcp to any port $BACKEND_PORT
 RULES
     echo "Anchor rules written to $ANCHOR_FILE"
     echo "  Allowed sources  : $MAC2_IP (primary edge)"
@@ -115,8 +118,9 @@ cmd_apply() {
 
     # --- 1. Back up existing state (once only) ---
     if [ ! -f "$BACKUP_FILE" ]; then
-        pfctl -sr 2>/dev/null > "$BACKUP_FILE" || true
-        echo "Backed up existing pf rules to $BACKUP_FILE"
+        # Record whether pf was enabled + the current rules (for rollback/evidence)
+        { pfctl -si 2>/dev/null | grep -i '^Status'; pfctl -sr 2>/dev/null; } > "$BACKUP_FILE" || true
+        echo "Backed up existing pf state to $BACKUP_FILE"
     else
         echo "Backup already exists at $BACKUP_FILE — skipping overwrite"
     fi
@@ -127,7 +131,7 @@ cmd_apply() {
     # --- 3. Load the anchor into pf ---
     # Register our anchor in the main ruleset (safe: only adds an anchor ref)
     # then load our rules into it.
-    pfctl -a "$ANCHOR_NAME" -f "$ANCHOR_FILE"
+    pfctl -a "$PF_ANCHOR" -f "$ANCHOR_FILE" || { echo "ERROR: pf rejected the rules - firewall NOT applied"; exit 1; }
 
     # Ensure pf is enabled
     pfctl -e 2>/dev/null || true
@@ -138,7 +142,7 @@ cmd_apply() {
     echo " Only $MAC2_IP and $STANDBY_EDGE_IP can reach it"
     echo "======================================================="
     echo ""
-    echo "Verify with: sudo pfctl -a $ANCHOR_NAME -sr"
+    echo "Verify with: sudo pfctl -a $PF_ANCHOR -sr"
     echo "Remove with: sudo ./firewall/backend-firewall.sh remove"
 }
 
@@ -146,18 +150,19 @@ cmd_remove() {
     check_root
 
     # --- 1. Flush our anchor ---
-    pfctl -a "$ANCHOR_NAME" -F rules 2>/dev/null || true
-    echo "Anchor '$ANCHOR_NAME' flushed."
+    pfctl -a "$PF_ANCHOR" -F rules 2>/dev/null || true
+    echo "Anchor '$PF_ANCHOR' flushed."
 
     # --- 2. Restore original ruleset from backup ---
     if [ -f "$BACKUP_FILE" ]; then
-        # If the backup is empty the system had no rules — that is fine.
-        if [ -s "$BACKUP_FILE" ]; then
-            pfctl -f "$BACKUP_FILE" 2>/dev/null || true
-            echo "Original pf ruleset restored from $BACKUP_FILE"
-        else
-            echo "Backup was empty — no rules to restore."
+        # Our rules lived only in our anchor, so flushing it already restored the
+        # original ruleset (we never touch the main ruleset). Only undo pf -e
+        # if pf was disabled before we applied.
+        if grep -qi '^Status: *Disabled' "$BACKUP_FILE"; then
+            pfctl -d 2>/dev/null || true
+            echo "pf was disabled before - disabled it again."
         fi
+        echo "Original pf state restored."
         rm -f "$BACKUP_FILE"
     else
         echo "No backup file found — nothing to restore."
@@ -177,8 +182,8 @@ cmd_status() {
     pfctl -si 2>/dev/null | head -5 || echo "(pfctl not available without sudo)"
 
     echo ""
-    echo "===== anchor: $ANCHOR_NAME ====="
-    pfctl -a "$ANCHOR_NAME" -sr 2>/dev/null \
+    echo "===== anchor: $PF_ANCHOR ====="
+    pfctl -a "$PF_ANCHOR" -sr 2>/dev/null \
         || echo "(no rules in anchor — firewall is not applied)"
 
     echo ""
