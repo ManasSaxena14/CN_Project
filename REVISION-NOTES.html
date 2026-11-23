@@ -1,0 +1,420 @@
+<title>Team 1 Viva Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a field manual - sticky contents rail on wide screens, one reading column, packet ladders and tables in their own scrollers */
+:root {
+  --bg: #f6f8fb; --surface: #ffffff; --fg: #17202e; --muted: #5a6577; --line: #dde3ec;
+  --accent: #1d5fd1; --accent-soft: #e6eefc;
+  --l2: #8a5a00; --l3: #2f6f3e; --l4: #6a3fb5; --tls: #b4232f; --l7: #1d5fd1;
+  --good: #1f7a45; --warn: #a35d00;
+  --code-bg: #eef2f8;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141c; --surface: #161d28; --fg: #e3e9f2; --muted: #98a3b5; --line: #2a3443;
+  --accent: #6ea0ff; --accent-soft: #1b2a45;
+  --l2: #e0a845; --l3: #6cc486; --l4: #b08cf0; --tls: #ff7b85; --l7: #6ea0ff;
+  --good: #5fd08f; --warn: #f0a94a; --code-bg: #1d2633; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f141c; --surface: #161d28; --fg: #e3e9f2; --muted: #98a3b5; --line: #2a3443;
+  --accent: #6ea0ff; --accent-soft: #1b2a45;
+  --l2: #e0a845; --l3: #6cc486; --l4: #b08cf0; --tls: #ff7b85; --l7: #6ea0ff;
+  --good: #5fd08f; --warn: #f0a94a; --code-bg: #1d2633; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--sans); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0,1fr); gap: 0; } nav.toc { display: none; } }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 13.5px; }
+nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 4px 0 4px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none; }
+nav.toc .lbl { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+main { min-width: 0; }
+header.top { margin-bottom: 8px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+h1 { font-weight: 700; font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 10px 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0; }
+section { margin-top: 44px; scroll-margin-top: 20px; }
+h2 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+h2 + .sub { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
+h3 { font-size: 16.5px; margin: 26px 0 8px; }
+p, li { max-width: 72ch; }
+code, kbd, .mono { font-family: var(--mono); font-size: .9em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13px/1.55 var(--mono); margin: 10px 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.num, .tab { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 22px; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.fact b { display: block; font: 600 11.5px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.fact span { font: 500 15px/1.4 var(--mono); }
+
+.tag { display: inline-block; font: 600 11px/1 var(--mono); padding: 4px 6px; border-radius: 4px; border: 1px solid currentColor; vertical-align: 1px; white-space: nowrap; }
+.t-l2 { color: var(--l2); } .t-l3 { color: var(--l3); } .t-l4 { color: var(--l4); } .t-tls { color: var(--tls); } .t-l7 { color: var(--l7); }
+
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+.step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.step-no { font: 700 13px/1 var(--mono); color: var(--accent); background: var(--accent-soft); padding: 5px 8px; border-radius: 5px; }
+.step-head h3 { margin: 0; }
+.who { font: 500 12.5px/1 var(--mono); color: var(--muted); }
+.say { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin: 10px 0; }
+.say::before { content: "Say"; display: block; font: 600 11px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.see { color: var(--muted); font-size: 14px; }
+
+details.q { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 8px 0; }
+details.q > summary { cursor: pointer; padding: 10px 14px; font-weight: 500; list-style: none; display: flex; gap: 10px; }
+details.q > summary::-webkit-details-marker { display: none; }
+details.q > summary::before { content: "Q"; font: 700 12px/1.7 var(--mono); color: var(--accent); flex: none; }
+details.q[open] > summary { border-bottom: 1px dashed var(--line); }
+details.q > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+details.q .a { padding: 10px 14px 12px 36px; }
+details.q .a p { margin: 0 0 6px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+button { font: 500 13px/1 var(--sans); color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ladder td:nth-child(1) { color: var(--muted); }
+.ladder .arrow { font-family: var(--mono); white-space: nowrap; }
+.note { background: var(--accent-soft); border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
+.warn { color: var(--warn); font-weight: 600; }
+ul.tight { padding-left: 20px; margin: 8px 0; } ul.tight li { margin: 3px 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card h3 { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="lbl">Contents</div>
+  <a href="#system">The system in one page</a>
+  <a href="#morning">Before the demo</a>
+  <a href="#runsheet">Demo run-sheet (11 steps)</a>
+  <a href="#wireshark">Wireshark walkthrough</a>
+  <a href="#layers">Protocols by layer</a>
+  <a href="#failures">Failures &amp; what they prove</a>
+  <a href="#phase2">Phase 2 extensions</a>
+  <a href="#fault">Diagnosing the injected fault</a>
+  <a href="#questions">Cross-questions</a>
+  <a href="#members">What each member owns</a>
+  <a href="#numbers">Numbers &amp; commands</a>
+</nav>
+
+<main>
+<header class="top">
+  <div class="eyebrow">CN Capstone · Team 1 · team1.test</div>
+  <h1>Private Network Service Platform: viva and demo notes</h1>
+  <p class="lede">Everything the examiner can ask about, matched to what our project actually does. Every member must be able to explain every part. Questions are collapsed so you can test yourselves: say the answer out loud first, then open it.</p>
+  <div class="facts">
+    <div class="fact"><b>Name</b><span>app.team1.test / api.team1.test</span></div>
+    <div class="fact"><b>Request path</b><span>DNS:53 → nginx:443 → :3001 | :3002</span></div>
+    <div class="fact"><b>TTL · max-age</b><span>30 s · 60 s</span></div>
+    <div class="fact"><b>Failover</b><span>max_fails=1 · fail_timeout=10s</span></div>
+  </div>
+</header>
+
+<section id="system">
+  <h2>The system in one page</h2>
+  <p class="sub">Four Macs on one Wi-Fi subnet. Each role maps to a cloud service. IPs are from <code>config.env</code>; check them on the day.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Mac</th><th>Role</th><th>IP (today)</th><th>Service : port</th><th>Cloud equivalent</th></tr></thead>
+    <tbody>
+      <tr><td>Mac 1</td><td>Primary DNS (dnsmasq) + test client</td><td class="num">10.128.139.224</td><td class="num">UDP 53</td><td>Route 53 private hosted zone</td></tr>
+      <tr><td>Mac 2</td><td>Edge: nginx, TLS termination, load balancer</td><td class="num">10.128.139.225</td><td class="num">TCP 443</td><td>AWS ALB / CDN edge</td></tr>
+      <tr><td>Mac 3</td><td>Backend A + standby edge (Ext E)</td><td class="num">10.128.139.70</td><td class="num">TCP 3001 (+443)</td><td>EC2 instance A</td></tr>
+      <tr><td>Mac 4</td><td>Backend B + backup DNS + main client</td><td class="num">10.128.139.68</td><td class="num">TCP 3002, UDP 53</td><td>EC2 instance B</td></tr>
+    </tbody>
+  </table></div>
+  <h3>One request, start to finish</h3>
+  <pre>Mac 4: curl https://app.team1.test/api/status
+ 1  DNS     Mac 4 :ephemeral ──UDP──▶ Mac 1 :53     "A? app.team1.test"
+            Mac 1 :53        ──UDP──▶ Mac 4         "A 10.128.139.225, TTL 30"
+ 2  TCP     Mac 4 :ephemeral ──SYN──▶ Mac 2 :443 ◀──SYN-ACK── ──ACK──▶
+ 3  TLS     ClientHello (SNI, ALPN h2) ▶ ◀ ServerHello, Certificate, key share ▶ Finished
+ 4  HTTP/2  GET /api/status  (encrypted inside TLS)
+ 5  Proxy   nginx picks a backend (round-robin) ──plain HTTP/1.1──▶ Mac 3:3001 or Mac 4:3002
+ 6  Reply   200 JSON + X-Backend: A|B + X-Edge + X-Upstream  ──encrypted──▶ Mac 4</pre>
+  <p>Key idea: <b>DNS only finds the address</b>. A separate TCP connection then goes to that address, TLS secures it, and HTTP runs inside. The client only ever knows the edge's IP. The backends are hidden behind nginx.</p>
+</section>
+
+<section id="morning">
+  <h2>Before the demo</h2>
+  <p class="sub">Arrive 15 minutes early. Everyone on the same hotspot.</p>
+  <ol>
+    <li>Every Mac: <code>git pull</code>, then <code>ipconfig getifaddr en0</code>. If any IP differs from <code>config.env</code>, Mac 1 fixes it, pushes, and everyone pulls again.</li>
+    <li>Every Mac: <code>./demo.sh ready</code> (Mac 1 and Mac 4 one after the other). It starts that Mac's services, resets to the clean start (firewall off, DNS normal, standby edge up) and runs that Mac's tests.</li>
+    <li>Mac 4: <code>./demo.sh capture</code> for a fresh Wireshark capture on today's IPs.</li>
+    <li>Every Mac: <code>./demo.sh check</code>. Everything should be OK.</li>
+    <li>Every Mac: open a second tab with <code>./demo.sh logs</code> and leave it visible (DNS queries / nginx requests / backend logs scroll live).</li>
+  </ol>
+  <div class="note"><b>The one rule that bites:</b> nginx and dnsmasq read <code>config.env</code> only when they start. If an IP changes, run <code>./demo.sh ready</code> again on Mac 2, Mac 1 and Mac 4.</div>
+</section>
+
+<section id="runsheet">
+  <h2>Demo run-sheet</h2>
+  <p class="sub">The PDF's fixed order. Run <code>./demo.sh N</code> on the Mac shown. The script pauses where the next person acts and prints a "SAY" line.</p>
+
+  <div class="step"><div class="step-head"><span class="step-no">1</span><h3>Topology and IP / service inventory</h3><span class="who">Mac 1 presents · ./demo.sh 1</span></div>
+    <p class="see">Opens ARCHITECTURE.md and prints the IP/service table.</p>
+    <div class="say">Four Macs on one private LAN. Mac 1 is our DNS, like Route 53. Mac 2 is the edge: it ends TLS and load-balances, like an ALB. Mac 3 and Mac 4 are two copies of the same app. Clients only ever talk to Mac 2.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">2</span><h3>All machines on the private LAN</h3><span class="who">every Mac · ./demo.sh 2</span></div>
+    <p class="see">Each Mac shows its IP, mask and gateway, and pings the other three.</p>
+    <div class="say">Same /24 subnet, same gateway, every Mac answers ICMP. Layer 3 works before we add any service.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">3</span><h3>Resolve the private name</h3><span class="who">Mac 4 · ./demo.sh 3 (Mac 1 shows its log)</span></div>
+    <p class="see">dig shows status NOERROR, the answer <code>app.team1.test. 30 IN A 10.128.139.225</code>, and <code>SERVER: 10.128.139.224#53</code>.</p>
+    <div class="say">The answer is Mac 2's IP, from our own server on UDP 53, with a 30-second TTL. DNS only gave us an address. No connection to the app exists yet.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">4</span><h3>HTTPS by name, no certificate warnings</h3><span class="who">Mac 4 · ./demo.sh 4 · Mac 2 shows the cert</span></div>
+    <p class="see">curl -v shows "SSL certificate verify ok", HTTP/2 200, issuer Team1 Local CA. Safari opens with a padlock and no IP in the URL.</p>
+    <div class="say">No -k. The certificate is signed by our own CA, which we installed in every client's trust store. TLS ends at nginx. From nginx to the backends it's plain HTTP on the private LAN.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">5</span><h3>Load balancing across both backends</h3><span class="who">Mac 4 · ./demo.sh 5 (Mac 2 log shows upstream=)</span></div>
+    <p class="see">X-Backend alternates A, B, A, B; X-Upstream shows the backend IP:port.</p>
+    <div class="say">Round-robin. One name, one IP, two servers. The client never learns the backend addresses. That's the edge's job.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">6</span><h3>Wireshark evidence of DNS, TCP and TLS</h3><span class="who">Mac 4 · ./demo.sh 6</span></div>
+    <p class="see">Walks the saved capture packet by packet in the terminal, then opens Wireshark with the filter applied. See the <a href="#wireshark">walkthrough</a>.</p></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">7</span><h3>HTTP headers and caching</h3><span class="who">Mac 4 · ./demo.sh 7 · Mac 3 explains</span></div>
+    <p class="see">curl -I shows <code>cache-control: max-age=60</code> and an ETag. The same request with If-None-Match returns <b>304</b> and no body.</p>
+    <div class="say">Within 60 seconds a browser doesn't ask at all: a fresh hit. After that it asks "is this ETag still current?" and gets a 304 with headers only: a conditional request. Without a cached copy it's a full 200 with the body. The ETag is the same on A and B, so the 304 works whichever backend answers.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">8</span><h3>Fail one backend, service continues</h3><span class="who">Mac 4 starts ./demo.sh 8 first · then Mac 3 ./demo.sh 8</span></div>
+    <p class="see">Mac 4 sends one request per second. Mac 3 stops Backend A: every request stays 200, all from B. Mac 3 restarts A, and after about 10 s it alternates again.</p>
+    <div class="say">nginx got "connection refused" from A, retried the same request on B (proxy_next_upstream), and benched A for 10 seconds (max_fails=1, fail_timeout=10s). The client never saw an error. The remaining single point of failure is the edge itself.</div></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">9</span><h3>Phase 2: DNS and resilience</h3><span class="who">./demo.sh 9a · 9b · 9c · 9e</span></div>
+    <ul class="tight">
+      <li><b>9a backup DNS (Ext A):</b> Mac 1 stops its DNS. Mac 4 still resolves, and dig's SERVER line shows Mac 4. Mac 1 restarts.</li>
+      <li><b>9b TTL (Ext B):</b> Mac 4 runs the TTL demo. Mac 1 and Mac 4 run <code>./demo.sh dns standby</code>. dig sees the new IP at once, the macOS cache keeps the old one until the TTL runs out, and a flush makes it immediate. Then both run <code>./demo.sh dns normal</code>.</li>
+      <li><b>9c firewall (Ext C):</b> Mac 1 shows direct access to :3001/:3002 working. Mac 3 and Mac 4 apply pf. Mac 1 now times out, while Mac 2 still reaches both and https://app.team1.test still works.</li>
+      <li><b>9e cutover (Ext E):</b> Mac 4 watches X-Edge. Mac 1 and Mac 4 run <code>./demo.sh dns standby</code>. X-Edge stays mac2-primary for up to 30 s, then becomes mac3-standby, with no failed requests. Then <code>./demo.sh dns normal</code>.</li>
+    </ul></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">10</span><h3>Diagnose the injected fault</h3><span class="who">Mac 4 drives · ./demo.sh 10</span></div>
+    <p class="see">Walk the layers out loud: DNS, then IP, TCP, TLS, HTTP. See <a href="#fault">the method</a>.</p></div>
+
+  <div class="step"><div class="step-head"><span class="step-no">11</span><h3>Individual viva</h3><span class="who">everyone</span></div>
+    <p class="see">Answers must come from understanding. Practise with the <a href="#questions">cross-questions</a>.</p></div>
+</section>
+
+<section id="wireshark">
+  <h2>Wireshark walkthrough</h2>
+  <p class="sub">The capture holds one TLS 1.2 connection (certificate visible) and TLS 1.3 connections (what browsers use). Click any packet. The middle pane lists the layers top to bottom: Frame, Ethernet II, IPv4, TCP or UDP, then DNS or TLS.</p>
+  <div class="scroll"><table class="ladder">
+    <thead><tr><th>#</th><th>Packet</th><th>Layer</th><th>Point at</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="arrow">client:5xxxx → Mac 1:53  A? app.team1.test</td><td><span class="tag t-l7">DNS</span> <span class="tag t-l4">UDP</span></td><td>Ephemeral source port, well-known destination port 53, UDP (no handshake)</td></tr>
+      <tr><td>2</td><td class="arrow">Mac 1:53 → client  A 10.128.139.225</td><td><span class="tag t-l7">DNS</span></td><td>Answer = edge IP, TTL 30. Also an AAAA query with no answer (no IPv6)</td></tr>
+      <tr><td>3</td><td class="arrow">client → Mac 2:443  [SYN] Seq=0</td><td><span class="tag t-l4">TCP</span></td><td>Client picks its initial sequence number. Wireshark shows it as relative 0</td></tr>
+      <tr><td>4</td><td class="arrow">Mac 2 → client  [SYN, ACK] Seq=0 Ack=1</td><td><span class="tag t-l4">TCP</span></td><td>Server's own ISN; Ack = client ISN + 1</td></tr>
+      <tr><td>5</td><td class="arrow">client → Mac 2  [ACK] Seq=1 Ack=1</td><td><span class="tag t-l4">TCP</span></td><td>Connection open. Only now can data flow</td></tr>
+      <tr><td>6</td><td class="arrow">Client Hello (SNI=app.team1.test)</td><td><span class="tag t-tls">TLS</span></td><td>Versions, cipher suites, random, SNI (in plain text), ALPN h2 / http/1.1</td></tr>
+      <tr><td>7</td><td class="arrow">Server Hello, Certificate</td><td><span class="tag t-tls">TLS 1.2</span></td><td>Chosen cipher; cert: subject app.team1.test, issuer Team1 Local CA, SAN app + api, valid 1 year</td></tr>
+      <tr><td>8</td><td class="arrow">Server Key Exchange, Server Hello Done</td><td><span class="tag t-tls">TLS 1.2</span></td><td>ECDHE public value, signed with the server's private key</td></tr>
+      <tr><td>9</td><td class="arrow">Client Key Exchange, Change Cipher Spec, Finished</td><td><span class="tag t-tls">TLS</span></td><td>Both sides now derive the same session keys. Finished is the first encrypted message</td></tr>
+      <tr><td>10</td><td class="arrow">Application Data</td><td><span class="tag t-tls">TLS</span> <span class="tag t-l7">HTTP</span></td><td>The GET and the response are in here, encrypted. Record content type 23</td></tr>
+      <tr><td>11</td><td class="arrow">TLS 1.3: Server Hello, Change Cipher Spec, Application Data</td><td><span class="tag t-tls">TLS 1.3</span></td><td>Everything after ServerHello is encrypted, including the certificate. One round trip</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Filters to type, in order</h3>
+  <pre>dns                              query + answer
+tcp.flags.syn == 1               SYN and SYN-ACK of each connection (ports, seq/ack)
+tls.handshake                    ClientHello / ServerHello / Certificate
+tls.handshake.type == 11         just the Certificate message (TLS 1.2 connection)
+tls.record.content_type == 23    Application Data = encrypted HTTP
+tcp.stream eq N                  one whole connection. Statistics › Flow Graph = ladder diagram</pre>
+  <div class="note">If Wireshark misbehaves, the terminal output of <code>./demo.sh 6</code> shows the same packets, decoded by tshark. Talk through that instead.</div>
+</section>
+
+<section id="layers">
+  <h2>Protocols by layer</h2>
+  <p class="sub">The PDF asks you to place each protocol. Know both models.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Protocol in our project</th><th>OSI</th><th>TCP/IP</th><th>Identifier</th></tr></thead>
+    <tbody>
+      <tr><td>DNS (dnsmasq)</td><td>7 Application</td><td>Application</td><td class="num">UDP 53</td></tr>
+      <tr><td>HTTP/1.1, HTTP/2 (REST API)</td><td>7 Application</td><td>Application</td><td class="num">inside TLS on 443; plain on 3001/3002</td></tr>
+      <tr><td>TLS 1.2 / 1.3</td><td>5–6 Session / Presentation (the PDF says Session/Transport)</td><td>Between Application and TCP</td><td class="num">record types 22 handshake, 23 data</td></tr>
+      <tr><td>TCP</td><td>4 Transport</td><td>Transport</td><td class="num">ports 443, 3001, 3002 + ephemeral</td></tr>
+      <tr><td>UDP</td><td>4 Transport</td><td>Transport</td><td class="num">port 53</td></tr>
+      <tr><td>IPv4</td><td>3 Network</td><td>Internet</td><td class="num">10.128.139.0/24</td></tr>
+      <tr><td>Wi-Fi 802.11 / Ethernet II, ARP</td><td>2 Data link</td><td>Link</td><td class="num">MAC addresses</td></tr>
+    </tbody>
+  </table></div>
+  <div class="grid2">
+    <div class="card"><h3>DNS</h3><ul class="tight">
+      <li>dnsmasq answers <code>app</code> and <code>api.team1.test</code> with the edge IP, TTL 30.</li>
+      <li>Unknown <code>*.test</code> names: NXDOMAIN (we're authoritative: <code>local=/team1.test/</code>).</li>
+      <li>Everything else (google.com) is forwarded to 8.8.8.8, so clients keep internet.</li>
+      <li>Why <code>.test</code>: reserved for testing. <code>.local</code> is mDNS/Bonjour on macOS and never reaches our server.</li>
+      <li><code>dig</code> asks the server directly. curl and Safari go through mDNSResponder, which caches.</li></ul></div>
+    <div class="card"><h3>TCP</h3><ul class="tight">
+      <li>3-way handshake: SYN, SYN-ACK, ACK. Sequence numbers start at a random ISN.</li>
+      <li>Reliability: every byte numbered; receiver ACKs; missing data retransmitted on timeout or duplicate ACKs.</li>
+      <li>Flow control: the receive window (Win=) stops the sender overrunning the receiver.</li>
+      <li>Socket pair = (client IP, ephemeral port, server IP, server port).</li>
+      <li>Refused = host up, no listener, RST. Timeout = no reply at all (host down or firewall drop).</li></ul></div>
+    <div class="card"><h3>TLS</h3><ul class="tight">
+      <li>Terminated at nginx (Mac 2). Backends need no certificates.</li>
+      <li>Trust: cert signed by Team1 Local CA. The CA is in each client's Keychain, plus a bundle for macOS curl via ~/.curlrc (macOS curl ignores the Keychain).</li>
+      <li>Cert: RSA 2048, SHA-256, SAN app + api, serverAuth, 365 days (Apple rejects more than 825).</li>
+      <li>ECDHE gives forward secrecy: the session key is never sent and can't be recovered later from the server key.</li>
+      <li>SNI is plain text in ClientHello, so the hostname is visible even with HTTPS.</li></ul></div>
+    <div class="card"><h3>HTTP and caching</h3><ul class="tight">
+      <li>Endpoints: <code>/</code>, <code>/api/status</code> (no-store), <code>/api/cache</code> (max-age=60 + ETag). Header <code>X-Backend: A|B</code>.</li>
+      <li>HTTP/2 negotiated by ALPN in the TLS handshake: binary, multiplexed streams, header compression. HTTP/3 = QUIC over UDP (explain only).</li>
+      <li>Fresh hit (no request), conditional (If-None-Match → 304, no body), full (200 + body).</li>
+      <li>/api/status is no-store so caching can't hide the load balancing.</li></ul></div>
+  </div>
+</section>
+
+<section id="failures">
+  <h2>Failures and what they prove</h2>
+  <p class="sub">PDF 6.3. The examiner wants the reason, not just the symptom. <code>./tests/test-macN.sh</code> simulates these safely; <code>./demo.sh</code> does them live.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Break</th><th>What you see</th><th>Layer</th><th>What it proves</th></tr></thead>
+    <tbody>
+      <tr><td>Client uses wrong DNS server (8.8.8.8)</td><td>dig NXDOMAIN, but ping to the edge IP works</td><td><span class="tag t-l7">DNS</span></td><td>DNS and IP connectivity are independent</td></tr>
+      <tr><td>DNS record points to wrong IP</td><td>dig "works", curl gets connection refused</td><td><span class="tag t-l7">DNS</span>→<span class="tag t-l4">TCP</span></td><td>DNS is a directory, not a connection. It never checks the target</td></tr>
+      <tr><td>One backend stopped</td><td>All requests 200, all X-Backend: B</td><td><span class="tag t-l7">App</span></td><td>The edge hides backend failure: retry + passive health check</td></tr>
+      <tr><td>Both backends stopped</td><td>DNS ok, TCP ok, cert ok, then <b>502 Bad Gateway</b> from nginx</td><td><span class="tag t-l7">App</span></td><td>Exactly where the edge ends and the backend begins</td></tr>
+      <tr><td>Wrong destination port (:8443)</td><td>ping works, TCP refused (RST)</td><td><span class="tag t-l4">TCP</span></td><td>IP = host, port = service on that host</td></tr>
+      <tr><td>Backend Mac switched off</td><td>nginx waits 2 s (connect timeout), then uses the other backend</td><td><span class="tag t-l3">IP</span></td><td>Refused is instant; a silent host needs a timeout</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="phase2">
+  <h2>Phase 2 extensions</h2>
+  <div class="grid2">
+    <div class="card"><h3>A · Backup DNS</h3><p>Mac 4 runs the same <code>dns/start-dns.sh</code>, so the records are identical. Clients list Mac 1, then Mac 4. Stop Mac 1: names still resolve and dig shows SERVER = Mac 4.</p><p><b>DNS failure</b> = names stop resolving. <b>App failure</b> = names resolve, but the service is down.</p></div>
+    <div class="card"><h3>B · TTL and record change</h3><p>TTL 30. Change the record: dig (which asks the server) sees it immediately, but the macOS cache returns the old IP until 30 s pass. A flush (<code>dscacheutil -flushcache; killall -HUP mDNSResponder</code>) switches at once.</p><p>Production: lower the TTL days before a migration, because the old long TTL is already cached everywhere.</p></div>
+    <div class="card"><h3>C · Service isolation (pf)</h3><p>macOS pf rules in anchor <code>com.apple/team1-backend</code>: allow TCP to the backend port only from Mac 2 and the standby edge (Mac 3), drop everything else silently. Stateful (keep state), so replies are allowed. <code>remove</code> restores the original state.</p><p>Like a security group that only allows the ALB's group: defence in depth, and the edge is the only way in.</p></div>
+    <div class="card"><h3>D · HA failover</h3><p><code>max_fails=1 fail_timeout=10s</code> marks a failed backend down for 10 s. <code>proxy_next_upstream error timeout http_502 http_503</code> retries the request on the other backend. <code>proxy_connect_timeout 2s</code>.</p><p>Passive health check (learns from real requests). nginx Plus and AWS ALB also do active probes. Remaining SPOF: the edge.</p></div>
+    <div class="card"><h3>E · Edge cutover</h3><p>Standby nginx on Mac 3 with the same generated config and the same certificate (the key moved by AirDrop, never git). X-Edge shows which edge answered. Point DNS at Mac 3: cached clients keep hitting Mac 2 for up to 30 s, new lookups go to Mac 3, and nothing fails because both edges serve.</p><p>Faster: floating IP with VRRP/keepalived (about 1 s, same L2), or a managed multi-AZ load balancer.</p></div>
+    <div class="card"><h3>F · Injected fault</h3><p>Diagnose bottom-up along the request. Partial credit for method, so say each step out loud. <code>./troubleshoot/diagnose.sh</code> stops at the first failing layer.</p></div>
+  </div>
+</section>
+
+<section id="fault">
+  <h2>Diagnosing the injected fault</h2>
+  <p class="sub">Always the same order. Name the layer before you touch anything.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Layer</th><th>Command</th><th>Healthy</th><th>If it fails, suspect</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-l7">DNS</span></td><td><code>dig app.team1.test</code>, <code>networksetup -getdnsservers Wi-Fi</code></td><td>10.128.139.225 from SERVER Mac 1</td><td>dnsmasq stopped, wrong record (--target), client DNS changed, stale cache</td></tr>
+      <tr><td><span class="tag t-l3">IP</span></td><td><code>ping 10.128.139.225</code></td><td>replies</td><td>Mac off Wi-Fi, IP changed, wrong network</td></tr>
+      <tr><td><span class="tag t-l4">TCP</span></td><td><code>nc -vz app.team1.test 443</code></td><td>succeeded</td><td>nginx stopped, wrong port, firewall</td></tr>
+      <tr><td><span class="tag t-tls">TLS</span></td><td><code>curl -v https://app.team1.test</code> or <code>openssl s_client</code></td><td>verify ok</td><td>wrong or expired cert, CA not trusted, name not in SAN</td></tr>
+      <tr><td><span class="tag t-l7">HTTP</span></td><td><code>curl -i …/api/status</code>, nginx error.log</td><td>200 + X-Backend</td><td>502/504 = backend down, wrong upstream port, firewall blocking the edge</td></tr>
+    </tbody>
+  </table></div>
+  <p>Likely injected faults: stop dnsmasq · point the record at the wrong IP · change a client's DNS · stop nginx · wrong backend port in config + reload · stop a backend · firewall without the edge's IP. Full list: <code>troubleshoot/RUNBOOK.md</code>.</p>
+</section>
+
+<section id="questions">
+  <h2>Cross-questions</h2>
+  <p class="sub">Say your answer out loud, then open it. Quiz each other in random order.</p>
+  <div class="toolbar"><button type="button" id="openAll">Open all answers</button><button type="button" id="closeAll">Close all</button></div>
+
+  <h3>DNS</h3>
+  <details class="q"><summary>What's the difference between DNS resolution and the HTTPS connection?</summary><div class="a"><p>DNS is a lookup: a UDP question to port 53 returns an IP. Then the client opens a separate TCP connection to that IP on 443 and runs TLS and HTTP over it. DNS can succeed while the connection fails (wrong record, nginx down), and you can connect by IP with no DNS at all.</p></div></details>
+  <details class="q"><summary>Why does DNS use UDP?</summary><div class="a"><p>One small question, one small answer. No handshake, so it's faster, and the client simply retries if a packet is lost. TCP 53 is used for large answers and zone transfers.</p></div></details>
+  <details class="q"><summary>Why .test and not .local?</summary><div class="a"><p>.test is reserved for testing (RFC 2606/6761). On macOS, .local is handled by mDNS/Bonjour multicast on port 5353, so the query would never reach our DNS server.</p></div></details>
+  <details class="q"><summary>Why can dig and curl give different answers?</summary><div class="a"><p>dig sends its own packet straight to the DNS server. curl and Safari call the OS resolver (mDNSResponder), which caches answers for the TTL. After a record change, dig sees the new IP immediately while curl uses the cached one until the TTL expires or you flush.</p></div></details>
+  <details class="q"><summary>What happens to google.com if a client uses Mac 1 as DNS?</summary><div class="a"><p>dnsmasq isn't authoritative for it, so it forwards the query to 8.8.8.8 and relays the answer. The client keeps normal internet.</p></div></details>
+  <details class="q"><summary>What is TTL, and why 30 seconds?</summary><div class="a"><p>How long resolvers and clients may cache an answer. 30 s makes record changes (failover, cutover) visible quickly, at the cost of more queries. In production you lower the TTL before a migration.</p></div></details>
+
+  <h3>TCP and ports</h3>
+  <details class="q"><summary>Walk me through the three-way handshake.</summary><div class="a"><p>SYN carries the client's random initial sequence number. SYN-ACK carries the server's own ISN and acknowledges client ISN + 1. The final ACK acknowledges server ISN + 1. Both sides now agree on sequence numbers and data can flow. Wireshark shows relative numbers starting at 0.</p></div></details>
+  <details class="q"><summary>What is an ephemeral port? Show me one.</summary><div class="a"><p>A temporary high port (49152–65535) the OS picks for the client side, e.g. 64537 → 443 in our capture. The server listens on a fixed well-known port: 53, 443, 3001, 3002.</p></div></details>
+  <details class="q"><summary>How does TCP make delivery reliable?</summary><div class="a"><p>Every byte has a sequence number. The receiver acknowledges what it got. Missing segments are retransmitted after a timeout or duplicate ACKs. The receive window does flow control, and congestion control adapts the sending rate to the network.</p></div></details>
+  <details class="q"><summary>"Connection refused" vs "timed out"?</summary><div class="a"><p>Refused: the host is up but nothing listens on that port, so its kernel answers SYN with RST (wrong-port demo, stopped backend). Timeout: no reply at all, because the host is down or a firewall silently drops the packet (our pf rules use block drop).</p></div></details>
+
+  <h3>TLS and certificates</h3>
+  <details class="q"><summary>Why does the browser trust our certificate?</summary><div class="a"><p>The edge certificate is signed by our private CA (Team1 Local CA), and we installed that CA certificate as trusted on every client. The client also checks that the name is in the SAN (app.team1.test), that the cert is within its dates, and that the server has the matching private key (it signs the key exchange).</p></div></details>
+  <details class="q"><summary>What does TLS termination mean here?</summary><div class="a"><p>nginx on Mac 2 decrypts HTTPS. From nginx to the backends it's plain HTTP on the private LAN. Certificates live in one place, backends stay simple, and the edge can read headers to route and load-balance.</p></div></details>
+  <details class="q"><summary>Why can't Wireshark show the HTTP request?</summary><div class="a"><p>It travels inside TLS Application Data records, encrypted with session keys only the two endpoints know. That's the point of HTTPS. We read headers at the endpoint with curl -v.</p></div></details>
+  <details class="q"><summary>Why is the certificate visible in one connection but not another?</summary><div class="a"><p>TLS 1.2 sends the Certificate message in plain text. TLS 1.3 encrypts everything after ServerHello, including the certificate. The capture forces one TLS 1.2 request so we can show it. Browsers use 1.3.</p></div></details>
+  <details class="q"><summary>Can someone on the Wi-Fi see which site you visit over HTTPS?</summary><div class="a"><p>Yes, partly: the DNS query is plain UDP, and the SNI field in ClientHello is plain text (app.team1.test). They can't see the path, headers or body.</p></div></details>
+  <details class="q"><summary>Why not just use curl -k?</summary><div class="a"><p>-k turns off certificate validation, so it proves nothing and would accept an impostor. The PDF forbids it. Our curl validates against a trust store that includes our CA.</p></div></details>
+
+  <h3>HTTP, caching and load balancing</h3>
+  <details class="q"><summary>Fresh hit vs conditional request vs full request?</summary><div class="a"><p>Fresh: within max-age=60 the client uses its copy without asking. Conditional: after that it sends If-None-Match with the ETag; if unchanged, the server answers 304 with headers only. Full: no cached copy, so 200 with the whole body.</p></div></details>
+  <details class="q"><summary>Why does the 304 work through the load balancer?</summary><div class="a"><p>/api/cache returns an identical body on A and B, so the ETag (a hash of the body) is identical. Whichever backend gets the conditional request recognises the ETag.</p></div></details>
+  <details class="q"><summary>Why doesn't the client need the backend IPs?</summary><div class="a"><p>DNS points at the edge only, and nginx holds the backend pool. Backends can be added, removed or replaced without touching clients or DNS, and they're hidden from the outside.</p></div></details>
+  <details class="q"><summary>Round-robin vs least_conn?</summary><div class="a"><p>Round-robin takes turns: A, B, A, B. least_conn sends each request to the backend with the fewest active connections, which is better when requests vary a lot in length.</p></div></details>
+  <details class="q"><summary>What exactly does 502 Bad Gateway mean?</summary><div class="a"><p>The edge itself is fine (DNS, TCP and TLS all worked), but it got no valid response from any upstream backend. 504 is the timeout version.</p></div></details>
+  <details class="q"><summary>HTTP/1.1 vs HTTP/2 vs HTTP/3?</summary><div class="a"><p>1.1: text, one request at a time per connection. 2: binary, many multiplexed streams over one TCP connection, header compression, negotiated by ALPN in TLS. 3: runs on QUIC over UDP, which avoids TCP head-of-line blocking (explanation only).</p></div></details>
+
+  <h3>Resilience (Phase 2)</h3>
+  <details class="q"><summary>How does nginx know a backend is down?</summary><div class="a"><p>Passively. When a real request to it fails (refused or timeout), max_fails=1 marks it down for fail_timeout=10s and the request is retried on the other backend. After 10 s nginx tries it again with real traffic. Active health checks (probing /health) exist in nginx Plus and AWS ALB.</p></div></details>
+  <details class="q"><summary>What's still a single point of failure, and how would you remove it?</summary><div class="a"><p>The edge on Mac 2: DNS points at one IP. Remove it with a standby edge plus DNS change (our Ext E, slow because of TTL), a floating IP with VRRP/keepalived (about 1 s), or a managed load balancer spread across availability zones.</p></div></details>
+  <details class="q"><summary>Why did some clients keep using the old edge after the cutover?</summary><div class="a"><p>They had cached the old DNS answer and keep using it until its 30 s TTL expires. That's why the old edge must keep serving for at least one TTL after the switch (a drain), and why you lower the TTL before migrating.</p></div></details>
+  <details class="q"><summary>Why does the firewall allow Mac 3 as well as Mac 2?</summary><div class="a"><p>Mac 3 is the standby edge. During a cutover it must still reach both backends, including Backend B on Mac 4. Everyone else is dropped.</p></div></details>
+  <details class="q"><summary>Why put pf rules in an anchor?</summary><div class="a"><p>An anchor is a named sub-ruleset. Our rules live there without touching the main ruleset, so removing them is just flushing the anchor. macOS only evaluates anchors under com.apple/, so ours is com.apple/team1-backend.</p></div></details>
+  <details class="q"><summary>What does ARP do in our setup?</summary><div class="a"><p>Before the first IP packet to Mac 2, the client broadcasts "who has 10.128.139.225?" and learns Mac 2's MAC address, because frames on the LAN are delivered by MAC address. See it with <code>arp -a</code>.</p></div></details>
+</section>
+
+<section id="members">
+  <h2>What each member owns</h2>
+  <p class="sub">Know your own part deeply, and still be ready for questions on the others.</p>
+  <div class="grid2">
+    <div class="card"><h3>Mac 1 · DNS</h3><ul class="tight"><li>Tasks A, B; Ext A (primary), Ext B, DNS side of Ext E</li><li>dnsmasq config: address=, local-ttl, local=, server=</li><li>dig vs OS cache, TTL, NXDOMAIN, forwarding, .test</li><li>Present: steps 1, 2, 9a, 9b</li></ul></div>
+    <div class="card"><h3>Mac 2 · Edge</h3><ul class="tight"><li>Tasks D, E; Ext D, Ext E (standby config)</li><li>Upstream pool, max_fails, proxy_next_upstream, http2, X-Edge</li><li>CA → CSR → signed cert, SAN, serverAuth, TLS handshake</li><li>502 vs 504, the edge as single point of failure, VRRP</li><li>Present: step 4 (cert), explains 8</li></ul></div>
+    <div class="card"><h3>Mac 3 · Backend A</h3><ul class="tight"><li>Tasks C, F; Ext C; hosts the standby edge</li><li>Endpoints, X-Backend, no-store vs max-age, ETag / 304</li><li>0.0.0.0 vs 127.0.0.1; pf anchor, stateful, block drop</li><li>Present: step 7 explanation, step 8 (stop/restart A), 9c</li></ul></div>
+    <div class="card"><h3>Mac 4 · Backend B + client</h3><ul class="tight"><li>Task G; backup DNS; main client; failure demos; Ext F</li><li>Wireshark ladder, ports, seq/ack, TLS 1.2 vs 1.3</li><li>Layer-by-layer diagnosis</li><li>Present: steps 3, 4, 5, 6, 7, 8 (driver), 9e, 10</li></ul></div>
+  </div>
+</section>
+
+<section id="numbers">
+  <h2>Numbers and commands</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Thing</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Ports</td><td class="num">DNS 53/UDP · HTTPS 443/TCP · Backend A 3001 · Backend B 3002</td></tr>
+      <tr><td>DNS TTL</td><td class="num">30 s (local-ttl)</td></tr>
+      <tr><td>Cache-Control on /api/cache</td><td class="num">max-age=60 + ETag; /api/status no-store</td></tr>
+      <tr><td>nginx failover</td><td class="num">max_fails=1 · fail_timeout=10s · connect 2s · read 5s · next_upstream tries 2</td></tr>
+      <tr><td>TLS</td><td class="num">TLSv1.2 + TLSv1.3 · HTTP/2 via ALPN</td></tr>
+      <tr><td>Certificate</td><td class="num">RSA 2048 · SHA-256 · 365 days · SAN app+api · CA valid to 2036</td></tr>
+      <tr><td>pf anchor</td><td class="num">com.apple/team1-backend</td></tr>
+    </tbody>
+  </table></div>
+  <pre>./demo.sh ready | check | logs | capture | 1..10 | 9a 9b 9c 9e | dns standby|normal | cleanup
+./tests/test-mac1.sh … test-mac4.sh     full automated check, saved to evidence/test-results/
+./troubleshoot/diagnose.sh             layer-by-layer diagnosis
+dig app.team1.test                     DNS (bypasses OS cache)
+dscacheutil -q host -a name app.team1.test     what curl/Safari get
+sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+curl -v https://app.team1.test/api/status
+curl -I https://app.team1.test/api/cache
+nc -vz app.team1.test 443</pre>
+  <div class="note"><b>If something breaks live:</b> run <code>./demo.sh check</code> on any Mac. It names the broken piece. 502/504 means a backend is down or unreachable. "Not resolving" means run <code>./demo.sh ready</code> on Mac 1. An IP change means fix config.env, then run ready on Mac 1, 2 and 4.</div>
+</section>
+</main>
+</div>
+
+<script>
+document.getElementById('openAll').addEventListener('click', function () {
+  document.querySelectorAll('details.q').forEach(function (d) { d.open = true; });
+});
+document.getElementById('closeAll').addEventListener('click', function () {
+  document.querySelectorAll('details.q').forEach(function (d) { d.open = false; });
+});
+</script>
