@@ -1,0 +1,9 @@
+===== Ext E: edge cutover watch (Mon Nov 23 13:23:46 IST 2026)   TTL=30s   Ctrl+C to stop =====
+TIME      DNS SERVER SAYS (dig)      THIS MAC USES (cache)      X-EDGE         STATUS
+13:23:46  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:23:49  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:23:51  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:23:53  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:23:56  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:23:58  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
+13:24:00  10.128.139.225 (Mac2 primary) 10.128.139.225 (Mac2 primary) mac2-primary   200
