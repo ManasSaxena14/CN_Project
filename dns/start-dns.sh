@@ -134,6 +134,8 @@ no-hosts
 
 # Query logging to stdout for auditing and viva demonstration
 log-queries
+# Without this dnsmasq on macOS sends the log to syslog, where it is lost
+log-facility=-
 
 # Keep in foreground so query stream is visible
 keep-in-foreground

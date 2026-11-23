@@ -145,9 +145,15 @@ client_tests() {
   [ -n "$edge" ] && pass "served by edge: X-Edge: $edge" || warn "no X-Edge header" "Mac 2: git pull && ./nginx-script.sh start"
 
   section "Task D - load balancing through the edge"
-  local seq="" a=0 b=0 x
-  for _ in 1 2 3 4 5 6 7 8; do x=$(hdr X-Backend "$URL/api/status"); seq="$seq ${x:--}"
-    [ "$x" = A ] && a=$((a+1)); [ "$x" = B ] && b=$((b+1)); done
+  local seq="" a=0 b=0 x round
+  # Round-robin is shared by ALL clients: if another Mac is testing at the same moment it can
+  # take every other turn, so retry (with a pause) before calling it a failure.
+  for round in 1 2 3; do
+    for _ in 1 2 3 4 5 6 7 8; do x=$(hdr X-Backend "$URL/api/status"); seq="$seq ${x:--}"
+      [ "$x" = A ] && a=$((a+1)); [ "$x" = B ] && b=$((b+1)); done
+    [ $a -gt 0 ] && [ $b -gt 0 ] && break
+    [ $((a+b)) -eq 0 ] && break; sleep $((round * 2))
+  done
   info "X-Backend sequence:$seq"
   [ $a -gt 0 ] && [ $b -gt 0 ] && pass "both backends serve traffic (A=$a B=$b)" || fail "only A=$a B=$b answered" "is the other backend running?"
 
