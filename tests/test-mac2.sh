@@ -67,7 +67,9 @@ if run_edge "$DEAD" "$REAL_B" start; then
     echo "$r" | head -1 | grep -q " 200" && ok=$((ok+1)); echo "$r" | grep -qi "^x-backend: B" && bb=$((bb+1)); done
   [ $ok -eq 6 ] && [ $bb -eq 6 ] && pass "Backend A dead: 6/6 requests still 200, all served by B (retry + passive health check)" \
     || fail "with A dead only $ok/6 succeeded (B served $bb)"
-  run_edge "$DEAD" "127.0.0.1:39998" reload
+  # full restart (not reload) so no old worker with the previous pool can answer
+  NGINX_PREFIX="$T" PORT=18443 ./nginx-script.sh stop >/dev/null 2>&1; sleep 1
+  run_edge "$DEAD" "127.0.0.1:39998" start; sleep 0.5
   r=$("${TE[@]}" -o /dev/null -w '%{http_code}' "https://$APP:18443/api/status")
   [ "$r" = 502 ] && pass "both backends dead: TLS still works, nginx returns 502 Bad Gateway" || fail "both dead returned $r (expected 502)"
   NGINX_PREFIX="$T" PORT=18443 ./nginx-script.sh stop >/dev/null 2>&1
