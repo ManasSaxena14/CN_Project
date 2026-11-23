@@ -1,0 +1,118 @@
+TEAM 1 - mac4 test run   Mon Nov 23 11:39:05 IST 2026
+domain team1.test | Mac1 10.202.54.224 | Mac2 10.202.54.225 | Mac3 10.202.54.70 | Mac4 10.202.54.68 | target 10.202.54.225
+
+== Role check ==
+  FAIL  this Mac is 10.128.139.68 but config.env says 10.202.54.68
+        fix: fix config.env (Mac 1 commits it), everyone git pull
+
+== Task A - private LAN ==
+        interface en0 | IPv4 10.128.139.68 | mask 255.255.255.0 | gateway 10.128.139.6 | MAC 22:dc:38:f6:77:a1
+  PASS  has a private IPv4 address on en0
+  FAIL  ping Mac 1 (10.202.54.224)
+        fix: same Wi-Fi? hotspot client isolation? Firewall stealth mode off?
+  FAIL  ping Mac 2 (10.202.54.225)
+        fix: same Wi-Fi? hotspot client isolation? Firewall stealth mode off?
+  FAIL  ping Mac 3 (10.202.54.70)
+        fix: same Wi-Fi? hotspot client isolation? Firewall stealth mode off?
+  FAIL  ping Mac 4 (10.202.54.68)
+        fix: same Wi-Fi? hotspot client isolation? Firewall stealth mode off?
+
+== Task C/F - Backend B on port 3002 ==
+  PASS  Backend B is listening on 3002
+  PASS  bound to all interfaces (0.0.0.0), reachable on the LAN
+  PASS  GET / -> 200
+  PASS  GET /api/status -> {"backend": "B", "status": "ok"}
+  PASS  header X-Backend: B
+  PASS  /api/status is Cache-Control: no-store (LB stays visible)
+  PASS  HEAD /api/cache works (curl -I)
+  PASS  /api/cache has Cache-Control max-age
+  PASS  /api/cache has ETag "512fd8b298df37e4331f2f50b04a880a"
+  PASS  conditional request (If-None-Match) -> 304 Not Modified
+
+== Ext A - backup DNS server on this Mac ==
+  PASS  backup DNS process is running
+  FAIL  backup DNS answers 'nothing'
+        fix: sudo ./mac4-backup-dns.sh
+
+== Task B - DNS from this client ==
+        DNS servers on Wi-Fi: 10.202.54.224 10.202.54.68 
+  PASS  client uses Mac 1 (10.202.54.224) as DNS
+  PASS  backup DNS (10.202.54.68) also listed (Ext A)
+  FAIL  dig app.team1.test -> 'no answer' (expected 10.202.54.225)
+        fix: is dnsmasq running on Mac 1 / Mac 4?
+  FAIL  dig api.team1.test wrong
+  WARN  unknown .test name gave '' (expected NXDOMAIN)
+  WARN  google.com does not resolve via team DNS
+        check server= upstream in dnsmasq
+  FAIL  macOS resolver gives 'nothing'
+        fix: sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+
+== Ext A/B - both DNS servers ==
+  FAIL  primary DNS Mac 1 answers 'nothing'
+        fix: Mac 1: sudo ./dns/start-dns.sh
+  FAIL  backup DNS Mac 4 answers 'nothing'
+        fix: Mac 4: sudo ./mac4-backup-dns.sh
+  FAIL  TTL primary=none backup=none (expected 30)
+
+== Task E - HTTPS by name, certificate validated (no -k) ==
+  FAIL  HTTPS request failed (curl exit 28)
+        fix: ./troubleshoot/diagnose.sh
+  FAIL  https://api.team1.test fails
+  WARN  HTTP/2 not negotiated
+  FAIL  HTTP/1.1 fails
+  WARN  forced TLS 1.2 failed
+  WARN  no X-Edge header
+        Mac 2: git pull && ./nginx-script.sh start
+
+== Task D - load balancing through the edge ==
+        X-Backend sequence: - - - - - - - -
+  FAIL  only A=0 B=0 answered
+        fix: is the other backend running?
+
+== Task F - HTTP caching through the edge ==
+  FAIL  no Cache-Control on /api/cache
+  FAIL  only 0/4 conditional requests returned 304
+        fix: ETag must be identical on both backends
+  WARN  /api/status is cacheable
+
+== Section 6.3 - failure behaviour (simulated, nothing is stopped) ==
+  WARN  wrong-DNS simulation inconclusive
+  PASS  DNS pointing to wrong IP (10.202.54.224): connection refused (DNS is only a directory)
+  WARN  wrong-port test gave curl exit 28
+        one-backend-down and both-down (502) are tested on Mac 2 with a private test edge
+
+== Ext C - backends not reachable directly from a client ==
+  PASS  direct access to Mac 3:3001 blocked (only the edges may connect)
+  PASS  direct access to Mac 4:3002 blocked (only the edges may connect)
+
+== Ext E - standby edge on Mac 3 ==
+  WARN  standby edge not running
+        Mac 3: ./mac3-standby-edge.sh start   (needed only for Ext E)
+
+== Task G - packet capture evidence ==
+  PASS  capture file present: evidence/05-wireshark/full-flow.pcap (290731 bytes)
+  PASS  capture contains the DNS query
+  PASS  capture contains the TCP handshake to 443
+
+================ SUMMARY ================
+  20 passed   18 failed   9 warnings
+  Failed:
+   - this Mac is 10.128.139.68 but config.env says 10.202.54.68
+   - ping Mac 1 (10.202.54.224)
+   - ping Mac 2 (10.202.54.225)
+   - ping Mac 3 (10.202.54.70)
+   - ping Mac 4 (10.202.54.68)
+   - backup DNS answers 'nothing'
+   - dig app.team1.test -> 'no answer' (expected 10.202.54.225)
+   - dig api.team1.test wrong
+   - macOS resolver gives 'nothing'
+   - primary DNS Mac 1 answers 'nothing'
+   - backup DNS Mac 4 answers 'nothing'
+   - TTL primary=none backup=none (expected 30)
+   - HTTPS request failed (curl exit 28)
+   - https://api.team1.test fails
+   - HTTP/1.1 fails
+   - only A=0 B=0 answered
+   - no Cache-Control on /api/cache
+   - only 0/4 conditional requests returned 304
+  (saved to evidence/test-results/mac4-20261123-113905.txt)
