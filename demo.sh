@@ -5,7 +5,9 @@
 #
 #   ./demo.sh ready        start everything this Mac needs, reset to the
 #                          clean starting state, then run this Mac's tests
+#   ./demo.sh check        10-second pre-flight (no sudo) - run right before presenting
 #   ./demo.sh logs         this Mac's live log window (keep it on screen)
+#   ./demo.sh capture      (Mac 4) fresh clean Wireshark capture of one full request
 #   ./demo.sh 1 ... 10     this Mac's part of demo step N
 #   ./demo.sh 9a|9b|9c|9e  Phase 2: backup DNS | TTL | firewall | edge cutover
 #   ./demo.sh dns standby|normal   (Mac 1 / Mac 4) point app.team1.test at
@@ -20,6 +22,8 @@ APP="app.$PROJECT_DOMAIN"; P=""; [ "$HTTPS_PORT" != "443" ] && P=":$HTTPS_PORT"
 URL="https://$APP$P"; CA="$ROOT/team1-ca.crt"
 LOG="$ROOT/logs"; mkdir -p "$LOG"
 PCAP=$(ls -t evidence/05-wireshark/*.pcap* 2>/dev/null | head -1)
+TSHARK=$(command -v tshark || ls /Applications/Wireshark.app/Contents/MacOS/tshark 2>/dev/null)
+WIRESHARK=$(ls /Applications/Wireshark.app/Contents/MacOS/Wireshark 2>/dev/null)
 
 B=$'\e[1m'; G=$'\e[32m'; R=$'\e[31m'; Y=$'\e[33m'; C=$'\e[36m'; D=$'\e[2m'; N=$'\e[0m'
 title() { echo; echo "${B}${C}=== STEP $1 ===${N}"; }
@@ -33,6 +37,7 @@ flush() { sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder 2>/dev/n
 up()    { nc -z -G 2 "$1" "$2" >/dev/null 2>&1; }
 pcap_edge() {  # edge IP from the capture's own DNS answer for app.<domain>
   [ -n "$PCAP" ] || return
+  if [ -n "$TSHARK" ]; then "$TSHARK" -r "$PCAP" -Y "dns.qry.name==\"$APP\" && dns.a" -T fields -e dns.a 2>/dev/null | head -1 | cut -d, -f1; return; fi
   local id; id=$(tcpdump -nn -r "$PCAP" "udp dst port 53" 2>/dev/null | awk -v n="A? $APP." 'index($0,n){sub(/\+$/,"",$6); print $6; exit}')
   tcpdump -nn -r "$PCAP" "udp src port 53" 2>/dev/null | awk -v id="$id" '{x=$6; sub(/[*+]$/,"",x)} x==id{for(i=7;i<=NF;i++) if($i=="A"){v=$(i+1); sub(/[^0-9.]+$/,"",v); print v; exit}}'
 }
@@ -94,8 +99,8 @@ cmd_ready() {
           elif [ -f "$HOME/cn-phase1/edge/nginx/certs/app.$PROJECT_DOMAIN.key" ]; then ./mac3-standby-edge.sh start >/dev/null 2>&1; edge_ok "$MYIP" && ok "standby edge started (for Ext E)" || bad "standby edge failed: ./mac3-standby-edge.sh start"
           else bad "edge cert not imported (needed for Ext E): Mac 2 ./mac2-export-certs.sh -> AirDrop -> ./mac2-import-certs.sh <tgz>"; fi ;;
     mac4) start_backend B "$BACKEND_B_PORT"; fw_off; dns_start; client_ready
-          if [ -z "$PCAP" ]; then bad "no capture yet: sudo ./mac4-task-g-capture.sh"
-          elif [ "$(pcap_edge)" != "$MAC2_IP" ]; then bad "capture is from an old network (edge $(pcap_edge)) - recapture so the IPs match today: sudo ./mac4-task-g-capture.sh"
+          if [ -z "$PCAP" ]; then bad "no capture yet: ./demo.sh capture"
+          elif [ "$(pcap_edge)" != "$MAC2_IP" ]; then bad "capture is from an old network (edge $(pcap_edge)) - recapture: ./demo.sh capture"
           else ok "saved capture matches today's network: $PCAP"; fi ;;
   esac
   echo; say "Self-test:"; is_client && echo "${D}  (Mac 1 and Mac 4: run tests one after the other, not at the same time)${N}"
@@ -130,6 +135,51 @@ cmd_dns() {
     stop)    sudo pkill -x dnsmasq; ok "DNS stopped on this Mac" ;;
     *) echo "usage: ./demo.sh dns standby|normal|stop" ;;
   esac
+}
+
+cmd_capture() {  # clean capture of ONE full flow, only team traffic (no other apps' noise)
+  is_client || { bad "run the capture on a client: Mac 4 (or Mac 1)"; exit 1; }
+  sudo -v || exit 1
+  mkdir -p evidence/05-wireshark
+  local out="evidence/05-wireshark/demo-$(date +%H%M%S).pcap"
+  local filt="(udp port 53 and (host $MAC1_IP or host $BACKUP_DNS_IP)) or (tcp port $HTTPS_PORT and host $APP_TARGET_IP)"
+  say "Capturing on $IFACE:  $filt"
+  sudo tcpdump -i "$IFACE" -s 0 -U -w "$out" "$filt" >/dev/null 2>&1 &
+  local tp=$!; sleep 1.5
+  flush; sleep 0.5
+  echo "  1) TLS 1.2 request (certificate visible in the capture)"
+  curl -s -m 8 --tlsv1.2 --tls-max 1.2 -o /dev/null -w "     %{http_code}  TLS1.2  local port %{local_port}\n" "$URL/api/status"
+  echo "  2) normal requests (TLS 1.3, HTTP/2) - load balanced"
+  for i in 1 2 3; do curl -s -m 8 -D - -o /dev/null "$URL/api/status" | tr -d '\r' | awk '/^HTTP/{s=$2} tolower($1)=="x-backend:"{print "     " s "  X-Backend: " $2}'; done
+  curl -s -m 8 -I "$URL/api/cache" >/dev/null
+  sleep 1.5; sudo kill -INT $tp 2>/dev/null; wait $tp 2>/dev/null
+  sudo chown "$(id -u)" "$out"
+  local n; n=$(tcpdump -nn -r "$out" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$n" -gt 10 ]; then ok "saved $out ($n packets)"; PCAP="$out"; else bad "capture has only $n packets - is DNS set to Mac 1? (./demo.sh ready)"; fi
+  echo "  Show it with:  ./demo.sh 6"
+}
+cmd_check() {  # quick pre-flight, no sudo, any Mac
+  say "Pre-flight from $NAME ($MYIP)"
+  local i v
+  for i in 1 2 3 4; do v="MAC${i}_IP"; [ "${!v}" = "$MYIP" ] && continue
+    ping -c 1 -t 2 "${!v}" >/dev/null 2>&1 && ok "Mac $i ${!v} reachable" || bad "Mac $i ${!v} NOT reachable"; done
+  for v in "$MAC1_IP:primary" "$BACKUP_DNS_IP:backup"; do
+    [ "$(dig +short +time=2 +tries=1 @"${v%%:*}" "$APP" | tail -1)" = "$APP_TARGET_IP" ] && ok "${v#*:} DNS (${v%%:*}) answers $APP -> $APP_TARGET_IP" || bad "${v#*:} DNS (${v%%:*}) wrong/no answer"; done
+  local ec; ec=$(curl -s -m 6 --cacert "$CA" --resolve "$APP:$HTTPS_PORT:$MAC2_IP" -o /dev/null -w '%{http_code}' "$URL/api/status" 2>/dev/null)
+  case "$ec" in
+    200) ok "primary edge https://$APP on $MAC2_IP OK (cert verified)" ;;
+    502|504) bad "edge is up and TLS works, but returns $ec - it cannot reach the backends (Mac 3 / Mac 4 running and on the Wi-Fi?)" ;;
+    000) bad "primary edge not answering HTTPS on $MAC2_IP:$HTTPS_PORT (Mac 2: ./demo.sh ready)" ;;
+    *) bad "primary edge returned $ec" ;;
+  esac
+  edge_ok "$STANDBY_EDGE_IP" && ok "standby edge on $STANDBY_EDGE_IP OK" || echo "  ${Y}--${N}  standby edge not running (only needed for 9e)"
+  local seq; seq=$(for _ in 1 2 3 4; do curl -s -m 4 --cacert "$CA" --resolve "$APP:$HTTPS_PORT:$MAC2_IP" -D - -o /dev/null "$URL/api/status" | tr -d '\r' | awk 'tolower($1)=="x-backend:"{printf $2}'; done)
+  [[ "$seq" == *A* && "$seq" == *B* ]] && ok "load balancing A+B ($seq)" || bad "load balancing only '$seq'"
+  if is_client; then
+    [ "$(dscacheutil -q host -a name "$APP" | awk '/ip_address/{print $2; exit}')" = "$APP_TARGET_IP" ] && ok "this Mac resolves $APP by name" || bad "this Mac does not resolve $APP -> ./demo.sh ready"
+    curl -s -m 5 -o /dev/null "$URL/api/status" && ok "this Mac trusts the certificate (curl, no -k)" || bad "curl by name fails -> ./demo.sh ready"
+  fi
+  [ "$ROLE" = mac4 ] && { [ "$(pcap_edge)" = "$APP_TARGET_IP" ] && ok "capture matches today's IPs" || bad "capture is old -> ./demo.sh capture"; }
 }
 
 # ---------------- the 11 steps ----------------
@@ -180,27 +230,51 @@ step5() { title "5 - Load balancing across both backends"
   tell "Round-robin: one name, one IP, two servers. The client never learns the backend IPs."
 }
 step6() { title "6 - Wireshark: DNS, TCP and TLS"
-  [ "$ROLE" = mac4 ] || { echo "  Presented on ${B}Mac 4${N} from the saved capture."; return; }
-  [ -n "$PCAP" ] || { bad "no capture: sudo ./mac4-task-g-capture.sh"; return; }
-  say "  Saved capture: $PCAP"
-  local qid edge sport
-  qid=$(tcpdump -nn -r "$PCAP" "udp dst port 53" 2>/dev/null | awk -v n="A? $APP." 'index($0,n){sub(/\+$/,"",$6); print $6; exit}')
-  edge=$(pcap_edge)
-  echo "  -- DNS: client ephemeral port -> 53/UDP, answer = edge IP $edge"
-  tcpdump -nn -r "$PCAP" "udp port 53" 2>/dev/null | awk -v id="$qid" '$6==id || $6==id"+" || $6==id"*"' | head -2 | sed 's/^/     /'
-  sport=$(tcpdump -nn -r "$PCAP" "dst host $edge and dst port 443 and tcp[tcpflags] & tcp-syn != 0" 2>/dev/null | head -1 | awk '{split($3,a,"."); print a[5]}')
-  echo "  -- TCP 3-way handshake, then TLS (client port $sport -> $edge:443):"
-  tcpdump -nn -r "$PCAP" "host $edge and port $sport" 2>/dev/null | head -6 | awk '{
-     lab="     "; if(NR==1)lab="SYN  "; if(NR==2)lab="S-ACK"; if(NR==3)lab="ACK  "; if(NR==4)lab="TLS  ";
-     printf "     %s %s %s %s %s %s\n", lab, $3, $4, $5, $6, $7}'
-  [ "$edge" != "$MAC2_IP" ] && echo "  ${D}(capture was taken on an earlier network, edge was $edge - same flow, different addresses)${N}"
-  open -a Wireshark "$PCAP" 2>/dev/null
-  echo; echo "  Wireshark filters, in this order:"
-  echo "     dns                            query + answer = $edge"
-  echo "     ip.addr==$edge && tcp.flags.syn==1    SYN / SYN-ACK  (show ports + seq/ack)"
-  echo "     tls.handshake                  ClientHello (SNI) / ServerHello / Certificate / ChangeCipherSpec"
-  echo "     tls.record.content_type==23    Application Data = encrypted HTTP"
-  tell "Ephemeral port -> 53/UDP for DNS, ephemeral -> 443/TCP for HTTPS. HTTP itself is encrypted, so we read headers with curl -v."
+  [ -n "$PCAP" ] || { bad "no capture yet - run on Mac 4:  ./demo.sh capture"; return; }
+  say "  Capture: $PCAP"
+  local edge; edge=$(pcap_edge)
+  if [ -z "$TSHARK" ]; then step6_tcpdump "$edge"; return; fi
+  local s1 s2 cs
+  s1=$("$TSHARK" -r "$PCAP" -Y "tcp.flags.syn==1 && tcp.flags.ack==0 && ip.dst==$edge && tcp.dstport==$HTTPS_PORT" -T fields -e tcp.stream 2>/dev/null | head -1)
+  s2=$("$TSHARK" -r "$PCAP" -Y "tcp.flags.syn==1 && tcp.flags.ack==0 && ip.dst==$edge && tcp.dstport==$HTTPS_PORT" -T fields -e tcp.stream 2>/dev/null | sed -n 2p)
+  echo; say "  [1] DNS - Application layer over UDP 53 (client ephemeral port -> Mac 1:53)"
+  "$TSHARK" -r "$PCAP" -Y "dns.qry.name==\"$APP\" && dns.qry.type==1" 2>/dev/null | head -2 | sed 's/^/    /'
+  tell "Query from the client's random port to our DNS on 53/UDP; the response carries the edge IP $edge (TTL ${DNS_TTL}s)."
+  pause "Next: TCP three-way handshake"
+  say "  [2] TCP handshake - Transport layer (client port -> $edge:$HTTPS_PORT), connection $s1"
+  "$TSHARK" -r "$PCAP" -Y "tcp.stream==$s1" 2>/dev/null | head -3 | sed 's/^/    /'
+  tell "SYN (client ISN, relative Seq=0) -> SYN-ACK (server ISN, Ack=1) -> ACK. Only now can any data flow. Socket pair = client IP:port <-> $edge:$HTTPS_PORT."
+  pause "Next: TLS handshake (TLS 1.2 connection, so the certificate is visible)"
+  say "  [3] TLS handshake on the same connection"
+  "$TSHARK" -r "$PCAP" -Y "tcp.stream==$s1 && (tls.handshake || tls.change_cipher_spec)" 2>/dev/null | head -6 | sed 's/^/    /'
+  cs=$("$TSHARK" -r "$PCAP" -Y "tcp.stream==$s1 && tls.handshake.type==11" -T fields -E separator='|' -e x509sat.uTF8String -e x509af.utcTime -e x509ce.dNSName -e x509sat.printableString 2>/dev/null | head -1)
+  [ -n "$cs" ] && echo "    Certificate sent by the edge:  subject/issuer names: $(echo "$cs" | cut -d'|' -f1,4 | tr '|' ' ')" && echo "                                   valid: $(echo "$cs" | cut -d'|' -f2)   SAN: $(echo "$cs" | cut -d'|' -f3)"
+  tell "ClientHello carries SNI=$APP -> ServerHello picks version/cipher -> Certificate (signed by Team1 Local CA) -> key exchange (ECDHE) -> ChangeCipherSpec + Finished. From here on everything is encrypted."
+  if [ -n "$s2" ]; then
+    pause "Next: the same thing with TLS 1.3 (what browsers use)"
+    say "  [4] TLS 1.3 connection $s2 - the Certificate is now encrypted"
+    "$TSHARK" -r "$PCAP" -Y "tcp.stream==$s2 && tls" 2>/dev/null | head -3 | sed 's/^/    /'
+    tell "In TLS 1.3 everything after ServerHello is encrypted, including the certificate, and the handshake is 1 round trip instead of 2."
+  fi
+  pause "Next: the HTTP request itself"
+  say "  [5] HTTP - Application Data (record type 23): encrypted"
+  "$TSHARK" -r "$PCAP" -Y "tcp.stream==$s1 && tls.record.content_type==23" 2>/dev/null | head -3 | sed 's/^/    /'
+  tell "The GET /api/status and its X-Backend header are inside these records - unreadable on the wire. That's why we read headers with curl -v at the endpoint."
+  local f="dns.qry.name contains \"$PROJECT_DOMAIN\" || tcp.stream==$s1${s2:+ || tcp.stream==$s2}"
+  echo; say "  Opening Wireshark with filter:  $f"
+  if [ -n "$WIRESHARK" ]; then nohup "$WIRESHARK" -r "$PCAP" -Y "$f" >/dev/null 2>&1 & fi
+  echo "  In Wireshark: click a packet -> middle pane shows the layers: Frame / Ethernet II (MAC) / IPv4 / TCP or UDP / TLS or DNS."
+  echo "  Filters to type:  dns   |   tcp.flags.syn==1   |   tls.handshake   |   tls.handshake.type==11   |   tls.record.content_type==23"
+  echo "  Statistics > Flow Graph shows the whole ladder diagram."
+}
+step6_tcpdump() {  # fallback when tshark is not installed
+  local edge=$1 sport
+  echo "  -- DNS (client -> 53/UDP):"; tcpdump -nn -r "$PCAP" "udp port 53" 2>/dev/null | grep "$APP" | head -2 | sed 's/^/     /'
+  sport=$(tcpdump -nn -r "$PCAP" "dst host $edge and dst port $HTTPS_PORT and tcp[tcpflags] & tcp-syn != 0" 2>/dev/null | head -1 | awk '{split($3,a,"."); print a[5]}')
+  echo "  -- TCP handshake + TLS (port $sport -> $edge:$HTTPS_PORT):"
+  tcpdump -nn -r "$PCAP" "host $edge and port $sport" 2>/dev/null | head -6 | sed 's/^/     /'
+  [ -n "$WIRESHARK" ] && nohup "$WIRESHARK" -r "$PCAP" >/dev/null 2>&1 &
+  echo "  Filters: dns | tcp.flags.syn==1 | tls.handshake | tls.record.content_type==23"
 }
 step7() { title "7 - HTTP headers and caching (304)"
   client_only "Mac 3 explains: /api/cache has the same ETag on A and B." || return
@@ -297,7 +371,8 @@ step10() { title "10 - Diagnose the injected fault"
 
 case "${1:-}" in
   ready) cmd_ready ;; logs) cmd_logs ;; cleanup) cmd_cleanup ;; dns) cmd_dns "${2:-}" ;;
+  capture) cmd_capture ;; check) cmd_check ;;
   1|2|3|4|5|6|7|8|9|10) "step$1" ;; 9a|9b|9c|9e) "step$1" ;;
   11) title "11 - Individual viva"; echo "  Answer from understanding. Revise: MAC2-PHASE2.md, troubleshoot/RUNBOOK.md, PHASE2-REPORT.md" ;;
-  *) sed -n '2,15p' "$0"; echo; echo "  This Mac: $NAME ($MYIP)" ;;
+  *) sed -n '2,17p' "$0"; echo; echo "  This Mac: $NAME ($MYIP)" ;;
 esac
